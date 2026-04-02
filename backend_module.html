@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Backend Module — FastAPI Deep Dive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F0EDE8;--bg2:#E5E2DC;--bg3:#D8D5CE;
+  --text:#1C1B18;--text2:#5A5950;--text3:#8C8B82;
+  --border:rgba(28,27,24,0.1);--border2:rgba(28,27,24,0.18);
+  --accent:#1A56A4;--accent-bg:#EBF1FA;--accent-text:#0D3268;
+  --success:#0D7A55;--success-bg:#E4F5EE;--success-text:#064530;
+  --warn:#9A5C00;--warn-bg:#FEF3DC;--warn-text:#5A3500;
+  --danger:#B52626;--danger-bg:#FDEAEA;--danger-text:#6B1414;
+  --purple:#5B4DB0;--purple-bg:#EEEDFE;--purple-text:#26215C;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --r:8px;--rl:12px;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:13px;line-height:1.6;min-height:100vh}
+.shell{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+.sidebar{background:#16150F;padding:0;position:sticky;top:0;height:100vh;overflow-y:auto;scrollbar-width:none}
+.sidebar::-webkit-scrollbar{display:none}
+.sidebar-logo{padding:20px 18px 14px;border-bottom:0.5px solid rgba(255,255,255,0.07)}
+.sidebar-logo .mark{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#6B6A60}
+.sidebar-logo .name{font-size:15px;font-weight:600;color:#F0EEE8;margin-top:2px}
+.nav-section{padding:12px 0 4px}
+.nav-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#3A3930;padding:0 16px 5px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 16px;font-size:12px;color:#7A7970;cursor:pointer;transition:all .12s;border:none;background:none;width:100%;text-align:left;font-family:var(--sans)}
+.nav-item:hover{color:#D4D2CC;background:rgba(255,255,255,0.04)}
+.nav-item.on{color:#F0EEE8;background:rgba(255,255,255,0.08)}
+.main{overflow-y:auto}
+.main-inner{padding:32px 36px 60px;max-width:920px}
+.page-hdr{margin-bottom:24px}
+.page-tag{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--purple);background:var(--purple-bg);padding:3px 10px;border-radius:20px;margin-bottom:10px}
+.page-title{font-size:24px;font-weight:600;letter-spacing:-.03em;color:var(--text);line-height:1.2}
+.page-sub{font-size:13px;color:var(--text2);margin-top:6px;line-height:1.6;max-width:580px}
+.section{margin-bottom:36px}
+.section-title{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-title::after{content:'';flex:1;height:0.5px;background:var(--border)}
+.code{background:#16150F;border-radius:var(--r);padding:14px 16px;font-family:var(--mono);font-size:11px;line-height:1.75;color:#C8C6BE;overflow-x:auto;white-space:pre;margin-bottom:12px;position:relative;border:0.5px solid rgba(255,255,255,0.06)}
+.kw{color:#89A4CE}.str{color:#7EC89A}.cm{color:#4A4940;font-style:italic}.fn{color:#E6A84A}.ty{color:#C48FD4}.op{color:#89A4CE}.dec{color:#F09595}
+.copy-btn{position:absolute;top:10px;right:10px;font-size:10px;padding:3px 8px;border-radius:4px;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.12);color:#8C8B82;cursor:pointer;font-family:var(--sans)}
+.copy-btn:hover{background:rgba(255,255,255,0.14);color:#C8C6BE}
+.tree{font-family:var(--mono);font-size:11px;line-height:1.85;color:#C8C6BE;background:#16150F;padding:14px 16px;border-radius:var(--r);margin-bottom:12px;overflow-x:auto;white-space:pre;border:0.5px solid rgba(255,255,255,0.06)}
+.tr-dir{color:#89A4CE;font-weight:500}.tr-file{color:#7EC89A}.tr-cfg{color:#E6A84A}.tr-test{color:#C48FD4}.tr-cm{color:#4A4940;font-style:italic}
+.card{background:#fff;border:0.5px solid var(--border);border-radius:var(--rl);padding:16px 18px;margin-bottom:10px}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:500}
+.b-blue{background:var(--accent-bg);color:var(--accent-text)}.b-green{background:var(--success-bg);color:var(--success-text)}
+.b-warn{background:var(--warn-bg);color:var(--warn-text)}.b-danger{background:var(--danger-bg);color:var(--danger-text)}
+.b-purple{background:var(--purple-bg);color:var(--purple-text)}.b-gray{background:var(--bg3);color:var(--text2)}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);padding:8px 10px;border-bottom:0.5px solid var(--border);text-align:left}
+.tbl td{padding:9px 10px;border-bottom:0.5px solid var(--border);vertical-align:top;color:var(--text);line-height:1.5}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--bg2)}
+.tbl code{font-family:var(--mono);font-size:10.5px;background:var(--bg3);padding:1px 5px;border-radius:4px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.endpoint-row{display:flex;align-items:flex-start;gap:10px;padding:10px 14px;border:0.5px solid var(--border);border-radius:var(--r);background:#fff;margin-bottom:7px;font-size:12px}
+.method{font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:4px;font-weight:600;flex-shrink:0;min-width:46px;text-align:center}
+.m-get{background:#E4F5EE;color:#064530}.m-post{background:var(--accent-bg);color:var(--accent-text)}
+.m-put{background:var(--warn-bg);color:var(--warn-text)}.m-del{background:var(--danger-bg);color:var(--danger-text)}
+.ep-path{font-family:var(--mono);font-size:11px;color:var(--text);font-weight:500;margin-bottom:3px}
+.ep-desc{font-size:11px;color:var(--text2)}
+.check-list{list-style:none}
+.check-list li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:0.5px solid var(--border);font-size:12.5px}
+.check-list li:last-child{border-bottom:none}
+.ci{flex-shrink:0;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;margin-top:2px}
+.ci.ok{background:var(--success-bg);color:var(--success-text)}.ci.warn{background:var(--warn-bg);color:var(--warn-text)}.ci.info{background:var(--accent-bg);color:var(--accent-text)}
+.module-card{background:#fff;border:0.5px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:8px}
+.module-name{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--accent);margin-bottom:4px}
+.module-resp{font-size:11.5px;color:var(--text);margin-bottom:6px}
+.module-deps{font-size:11px;color:var(--text3)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="mark">SaaS School</div>
+    <div class="name">Backend Deep Dive</div>
+  </div>
+  <nav>
+    <div class="nav-section">
+      <div class="nav-label">Struktur</div>
+      <button class="nav-item on" onclick="show('structure',this)">Folder Structure</button>
+      <button class="nav-item" onclick="show('modules',this)">Module Boundaries</button>
+      <button class="nav-item" onclick="show('middleware',this)">Middleware Stack</button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">API Endpoints</div>
+      <button class="nav-item" onclick="show('auth-ep',this)">Auth</button>
+      <button class="nav-item" onclick="show('schools-ep',this)">Schools</button>
+      <button class="nav-item" onclick="show('integrations-ep',this)">Integrations</button>
+      <button class="nav-item" onclick="show('sync-ep',this)">Sync Jobs</button>
+      <button class="nav-item" onclick="show('users-ep',this)">Users & Roles</button>
+      <button class="nav-item" onclick="show('admin-ep',this)">Admin</button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Implementation</div>
+      <button class="nav-item" onclick="show('fastapi-code',this)">FastAPI Code</button>
+      <button class="nav-item" onclick="show('worker-code',this)">Worker Code</button>
+      <button class="nav-item" onclick="show('db-layer',this)">DB Layer</button>
+      <button class="nav-item" onclick="show('observability',this)">Observability</button>
+      <button class="nav-item" onclick="show('docker',this)">Docker & K8s</button>
+    </div>
+  </nav>
+</aside>
+
+<main class="main">
+<div class="main-inner">
+
+<!-- ═══ STRUCTURE ═══ -->
+<section id="s-structure" style="display:block">
+<div class="page-hdr">
+  <div class="page-tag">Modul 2 — Backend</div>
+  <div class="page-title">FastAPI Structure & Worker</div>
+  <div class="page-sub">Monorepo apps/api + apps/worker. Shared packages untuk types dan adapters.</div>
+</div>
+
+<div class="section-title">apps/api — tree -L 4</div>
+<div class="tree"><span class="tr-dir">apps/api/</span>
+├── <span class="tr-cfg">Dockerfile</span>
+├── <span class="tr-cfg">pyproject.toml</span>
+├── <span class="tr-cfg">alembic.ini</span>
+├── <span class="tr-cfg">.env.example</span>
+└── <span class="tr-dir">src/</span>
+    ├── <span class="tr-file">main.py</span>                          <span class="tr-cm"># FastAPI app factory</span>
+    ├── <span class="tr-dir">config/</span>
+    │   ├── <span class="tr-file">settings.py</span>                  <span class="tr-cm"># Pydantic BaseSettings</span>
+    │   ├── <span class="tr-file">logging.py</span>                   <span class="tr-cm"># structlog config</span>
+    │   └── <span class="tr-file">otel.py</span>                      <span class="tr-cm"># OTel setup</span>
+    ├── <span class="tr-dir">api/</span>
+    │   └── <span class="tr-dir">v1/</span>
+    │       ├── <span class="tr-file">router.py</span>                <span class="tr-cm"># include semua sub-router</span>
+    │       ├── <span class="tr-dir">auth/</span>
+    │       │   ├── <span class="tr-file">router.py</span>            <span class="tr-cm"># POST /token, /refresh, /logout</span>
+    │       │   └── <span class="tr-file">schemas.py</span>
+    │       ├── <span class="tr-dir">schools/</span>
+    │       │   ├── <span class="tr-file">router.py</span>            <span class="tr-cm"># CRUD school + onboarding steps</span>
+    │       │   └── <span class="tr-file">schemas.py</span>
+    │       ├── <span class="tr-dir">integrations/</span>
+    │       │   ├── <span class="tr-file">router.py</span>            <span class="tr-cm"># CRUD connection + field-map</span>
+    │       │   └── <span class="tr-file">schemas.py</span>
+    │       ├── <span class="tr-dir">sync/</span>
+    │       │   ├── <span class="tr-file">router.py</span>            <span class="tr-cm"># create job, status, logs</span>
+    │       │   └── <span class="tr-file">schemas.py</span>
+    │       ├── <span class="tr-dir">users/</span>
+    │       │   ├── <span class="tr-file">router.py</span>            <span class="tr-cm"># CRUD user, role assign</span>
+    │       │   └── <span class="tr-file">schemas.py</span>
+    │       └── <span class="tr-dir">admin/</span>
+    │           ├── <span class="tr-file">router.py</span>            <span class="tr-cm"># platform ops (super admin)</span>
+    │           └── <span class="tr-file">schemas.py</span>
+    ├── <span class="tr-dir">services/</span>
+    │   ├── <span class="tr-file">auth_service.py</span>              <span class="tr-cm"># JWT verify, OIDC callback</span>
+    │   ├── <span class="tr-file">school_service.py</span>            <span class="tr-cm"># onboarding business logic</span>
+    │   ├── <span class="tr-file">sync_service.py</span>              <span class="tr-cm"># create & enqueue jobs</span>
+    │   ├── <span class="tr-file">integration_service.py</span>       <span class="tr-cm"># connection + mapping</span>
+    │   └── <span class="tr-file">audit_service.py</span>             <span class="tr-cm"># write audit_event</span>
+    ├── <span class="tr-dir">integrations/</span>
+    │   └── <span class="tr-dir">adapters/</span>
+    │       ├── <span class="tr-file">base.py</span>                  <span class="tr-cm"># AbstractSISAdapter</span>
+    │       ├── <span class="tr-file">vendor_a.py</span>              <span class="tr-cm"># REST adapter</span>
+    │       ├── <span class="tr-file">vendor_b.py</span>              <span class="tr-cm"># SFTP/CSV adapter</span>
+    │       └── <span class="tr-file">registry.py</span>              <span class="tr-cm"># adapter factory</span>
+    ├── <span class="tr-dir">db/</span>
+    │   ├── <span class="tr-file">session.py</span>                   <span class="tr-cm"># async SQLAlchemy engine</span>
+    │   ├── <span class="tr-dir">migrations/</span>                  <span class="tr-cm"># Alembic versions/</span>
+    │   └── <span class="tr-dir">repositories/</span>
+    │       ├── <span class="tr-file">school_repo.py</span>
+    │       ├── <span class="tr-file">sync_job_repo.py</span>
+    │       └── <span class="tr-file">audit_repo.py</span>
+    ├── <span class="tr-dir">models/</span>
+    │   ├── <span class="tr-file">school.py</span>
+    │   ├── <span class="tr-file">integration.py</span>
+    │   ├── <span class="tr-file">sync_job.py</span>
+    │   ├── <span class="tr-file">user.py</span>
+    │   └── <span class="tr-file">audit_event.py</span>
+    ├── <span class="tr-dir">middleware/</span>
+    │   ├── <span class="tr-file">auth_middleware.py</span>           <span class="tr-cm"># JWT verify + inject claims</span>
+    │   ├── <span class="tr-file">tenant_middleware.py</span>         <span class="tr-cm"># set RLS context per request</span>
+    │   └── <span class="tr-file">logging_middleware.py</span>        <span class="tr-cm"># structured request log</span>
+    ├── <span class="tr-dir">logging/</span>
+    │   ├── <span class="tr-file">structured.py</span>                <span class="tr-cm"># structlog JSON formatter</span>
+    │   └── <span class="tr-file">audit_logger.py</span>              <span class="tr-cm"># write audit_event</span>
+    └── <span class="tr-dir">tests/</span>
+        ├── <span class="tr-test">unit/</span>                        <span class="tr-cm"># service logic tests</span>
+        ├── <span class="tr-test">integration/</span>                 <span class="tr-cm"># endpoint tests (testcontainers)</span>
+        └── <span class="tr-test">contract/</span>                    <span class="tr-cm"># Pact consumer contracts</span></div>
+
+<div class="section-title">apps/worker — tree -L 3</div>
+<div class="tree"><span class="tr-dir">apps/worker/</span>
+├── <span class="tr-cfg">Dockerfile</span>
+├── <span class="tr-cfg">pyproject.toml</span>
+└── <span class="tr-dir">src/</span>
+    ├── <span class="tr-file">main.py</span>                      <span class="tr-cm"># ARQ worker pool setup</span>
+    ├── <span class="tr-dir">jobs/</span>
+    │   ├── <span class="tr-file">sync_job.py</span>              <span class="tr-cm"># main sync orchestration</span>
+    │   ├── <span class="tr-file">report_job.py</span>            <span class="tr-cm"># async report generation</span>
+    │   └── <span class="tr-file">test_conn_job.py</span>         <span class="tr-cm"># test integration connection</span>
+    ├── <span class="tr-dir">retry/</span>
+    │   ├── <span class="tr-file">backoff.py</span>               <span class="tr-cm"># exponential + full jitter</span>
+    │   └── <span class="tr-file">circuit_breaker.py</span>       <span class="tr-cm"># state machine: CLOSED/OPEN/HALF</span>
+    ├── <span class="tr-dir">dlq/</span>
+    │   └── <span class="tr-file">handler.py</span>               <span class="tr-cm"># write to DLQ + reprocess</span>
+    └── <span class="tr-dir">integrations/</span>                <span class="tr-cm"># symlink ke packages/adapters</span></div>
+</section>
+
+<!-- ═══ MODULES ═══ -->
+<section id="s-modules" style="display:none">
+<div class="page-hdr">
+  <div class="page-title">Module Boundaries</div>
+  <div class="page-sub">Setiap modul punya tanggung jawab yang jelas. Tidak ada import silang antar domain service.</div>
+</div>
+<div class="module-card">
+  <div class="module-name">auth/</div>
+  <div class="module-resp">Verifikasi JWT dari OIDC provider. Extrak claims (user_id, school_id, roles). Tidak tahu tentang business logic apapun.</div>
+  <div class="module-deps">Depends on: Keycloak public key, redis (token blacklist). Used by: semua route via Depends()</div>
+</div>
+<div class="module-card">
+  <div class="module-name">schools/</div>
+  <div class="module-resp">CRUD school entity. Wizard onboarding (step 1–3). Update status (onboarding→active). Tidak tahu tentang integrasi atau sync.</div>
+  <div class="module-deps">Depends on: school_repo, audit_service. Called by: FE onboarding wizard.</div>
+</div>
+<div class="module-card">
+  <div class="module-name">integrations/</div>
+  <div class="module-resp">CRUD integration_connection. Manage field mapping (integration_field_map). Test koneksi (async via worker). Tidak eksekusi sync.</div>
+  <div class="module-deps">Depends on: integration_service, adapter_registry, MQ publisher. Called by: FE setup page.</div>
+</div>
+<div class="module-card">
+  <div class="module-name">sync/</div>
+  <div class="module-resp">Create dan trigger sync_job. Poll status. Fetch run logs. Tidak mengeksekusi sync sendiri — delegasi ke worker via RabbitMQ.</div>
+  <div class="module-deps">Depends on: sync_service, MQ publisher, sync_job_repo. Called by: FE dashboard, scheduler.</div>
+</div>
+<div class="module-card">
+  <div class="module-name">users/</div>
+  <div class="module-resp">CRUD user_account per tenant. Assign/revoke role. Suspend user. Invite via email. Scoped ke school_id dari JWT.</div>
+  <div class="module-deps">Depends on: user_repo, role_repo, email_service, audit_service.</div>
+</div>
+<div class="module-card">
+  <div class="module-name">admin/</div>
+  <div class="module-resp">Platform-level operations: isolasi tenant, retensi data, global metrics. Hanya bisa diakses role super_admin — bukan school admin biasa.</div>
+  <div class="module-deps">Depends on: semua repo. Required role: super_admin (dari JWT platform claim).</div>
+</div>
+<div class="module-card">
+  <div class="module-name">services/</div>
+  <div class="module-resp">Business logic layer. Tidak ada SQL langsung — delegasi ke repository. Tidak ada HTTP knowledge — dipanggil oleh router via Depends().</div>
+  <div class="module-deps">Depends on: repositories. Called by: routers.</div>
+</div>
+<div class="module-card">
+  <div class="module-name">integrations/adapters/</div>
+  <div class="module-resp">SIS connector implementations. Setiap adapter implement AbstractSISAdapter. Dipilih via registry berdasarkan provider string.</div>
+  <div class="module-deps">Depends on: httpx (REST), paramiko (SFTP), pandas (CSV). Called by: worker sync_job.</div>
+</div>
+</section>
+
+<!-- ═══ MIDDLEWARE ═══ -->
+<section id="s-middleware" style="display:none">
+<div class="page-hdr">
+  <div class="page-title">Middleware Stack</div>
+  <div class="page-sub">Urutan middleware sangat penting. Setiap request melewati semua layer sebelum sampai ke route handler.</div>
+</div>
+
+<div class="section-title">main.py — App Factory + Middleware Order</div>
+<div class="code"><button class="copy-btn" onclick="copyCode(this)">copy</button><span class="cm"># src/main.py</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI
+<span class="kw">from</span> fastapi.middleware.cors <span class="kw">import</span> CORSMiddleware
+<span class="kw">from</span> starlette.middleware.base <span class="kw">import</span> BaseHTTPMiddleware
+<span class="kw">from</span> opentelemetry.instrumentation.fastapi <span class="kw">import</span> FastAPIInstrumentor
+<span class="kw">from</span> prometheus_fastapi_instrumentator <span class="kw">import</span> Instrumentator
+<span class="kw">from</span> .config.settings <span class="kw">import</span> settings
+<span class="kw">from</span> .middleware.logging_middleware <span class="kw">import</span> RequestLoggingMiddleware
+<span class="kw">from</span> .middleware.tenant_middleware <span class="kw">import</span> TenantMiddleware
+<span class="kw">from</span> .api.v1.router <span class="kw">import</span> api_router
+
+<span class="kw">def</span> <span class="fn">create_app</span>() -> FastAPI:
+    app = FastAPI(
+        title=<span class="str">"School Integrator API"</span>,
+        version=<span class="str">"1.0.0"</span>,
+        docs_url=<span class="str">"/docs"</span> <span class="kw">if</span> settings.ENV != <span class="str">"production"</span> <span class="kw">else</span> <span class="kw">None</span>,
+    )
+
+    <span class="cm"># ── Middleware — order matters (bottom = first executed) ──</span>
+
+    <span class="cm"># 1. CORS — paling luar</span>
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.ALLOWED_ORIGINS,  <span class="cm"># ["https://app.sekolah.id"]</span>
+        allow_credentials=<span class="kw">True</span>,
+        allow_methods=[<span class="str">"GET"</span>, <span class="str">"POST"</span>, <span class="str">"PUT"</span>, <span class="str">"DELETE"</span>, <span class="str">"OPTIONS"</span>],
+        allow_headers=[<span class="str">"*"</span>],
+    )
+
+    <span class="cm"># 2. Request logging — log semua request</span>
+    app.add_middleware(RequestLoggingMiddleware)
+
+    <span class="cm"># 3. Tenant middleware — set RLS context ke DB session</span>
+    app.add_middleware(TenantMiddleware)
+
+    <span class="cm"># ── OpenTelemetry instrumentation ──</span>
+    FastAPIInstrumentor.instrument_app(app)
+
+    <span class="cm"># ── Prometheus metrics endpoint ──</span>
+    Instrumentator().<span class="fn">instrument</span>(app).<span class="fn">expose</span>(app, endpoint=<span class="str">"/metrics"</span>)
+
+    <span class="cm"># ── Routers ──</span>
+    app.include_router(api_router, prefix=<span class="str">"/api/v1"</span>)
+
+    <span class="kw">return</span> app
+
+app = create_app()</div>
+
+<div class="section-title">auth_middleware.py — JWT + Dependency</div>
+<div class="code"><button class="copy-btn" onclick="copyCode(this)">copy</button><span class="cm"># src/middleware/auth_middleware.py</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> Depends, HTTPException, Request, status
+<span class="kw">from</span> fastapi.security <span class="kw">import</span> HTTPBearer, HTTPAuthorizationCredentials
+<span class="kw">import</span> jwt
+<span class="kw">from</span> .config.settings <span class="kw">import</span> settings
+
+security = HTTPBearer()
+
+<span class="kw">async def</span> <span class="fn">verify_jwt</span>(
+    request: Request,
+    creds: HTTPAuthorizationCredentials = Depends(security)
+) -> dict:
+    <span class="cm">"""Decode dan validasi JWT. Inject ke request.state."""</span>
+    token = creds.credentials
+    <span class="kw">try</span>:
+        payload = jwt.decode(
+            token,
+            settings.OIDC_PUBLIC_KEY,
+            algorithms=[<span class="str">"RS256"</span>],       <span class="cm"># WAJIB explicit — jangan ["*"]</span>
+            options={
+                <span class="str">"verify_iss"</span>: <span class="kw">True</span>,      <span class="cm"># cek issuer</span>
+                <span class="str">"verify_aud"</span>: <span class="kw">True</span>,      <span class="cm"># cek audience</span>
+                <span class="str">"verify_exp"</span>: <span class="kw">True</span>,      <span class="cm"># cek expiry</span>
+                <span class="str">"require"</span>: [<span class="str">"sub"</span>, <span class="str">"iss"</span>, <span class="str">"aud"</span>, <span class="str">"exp"</span>],
+            },
+            audience=settings.JWT_AUDIENCE,
+            issuer=settings.OIDC_ISSUER,
+        )
+    <span class="kw">except</span> jwt.ExpiredSignatureError:
+        <span class="kw">raise</span> HTTPException(status.HTTP_401_UNAUTHORIZED, detail=<span class="str">"Token expired"</span>)
+    <span class="kw">except</span> jwt.InvalidTokenError <span class="kw">as</span> e:
+        <span class="kw">raise</span> HTTPException(status.HTTP_401_UNAUTHORIZED, detail=<span class="str">"Invalid token"</span>)
+
+    request.state.user_id   = payload[<span class="str">"sub"</span>]
+    request.state.school_id = payload.get(<span class="str">"school_id"</span>)
+    request.state.roles     = payload.get(<span class="str">"roles"</span>, [])
+    <span class="kw">return</span> payload
+
+<span class="cm"># Dependency factory untuk role guard</span>
+<span class="kw">def</span> <span class="fn">require_role</span>(*roles: str):
+    <span class="kw">async def</span> <span class="fn">_guard</span>(payload: dict = Depends(<span class="fn">verify_jwt</span>)) -> dict:
+        user_roles = set(payload.get(<span class="str">"roles"</span>, []))
+        <span class="kw">if not</span> user_roles.intersection(roles):
+            <span class="kw">raise</span> HTTPException(status.HTTP_403_FORBIDDEN, detail=<span class="str">"Insufficient role"</span>)
+        <span class="kw">return</span> payload
+    <span class="kw">return</span> _guard
+
+<span class="cm"># Helper untuk ekstrak school_id dari JWT</span>
+<span class="kw">def</span> <span class="fn">get_current_school_id</span>(request: Request) -> str:
+    school_id = request.state.school_id
+    <span class="kw">if not</span> school_id:
+        <span class="kw">raise</span> HTTPException(status.HTTP_400_BAD_REQUEST, detail=<span class="str">"school_id missing"</span>)
+    <span class="kw">return</span> school_id</div>
+
+<div class="section-title">tenant_middleware.py — RLS Context</div>
+<div class="code"><button class="copy-btn" onclick="copyCode(this)">copy</button><span class="cm"># src/middleware/tenant_middleware.py</span>
+<span class="kw">from</span> starlette.middleware.base <span class="kw">import</span> BaseHTTPMiddleware
+<span class="kw">from</span> starlette.requests <span class="kw">import</span> Request
+
+<span class="kw">class</span> <span class="ty">TenantMiddleware</span>(BaseHTTPMiddleware):
+    <span class="kw">async def</span> <span class="fn">dispatch</span>(self, request: Request, call_next):
+        response = <span class="kw">await</span> call_next(request)
+        <span class="kw">return</span> response
+
+<span class="cm"># RLS context di-set di DB session per request</span>
+<span class="cm"># src/db/session.py</span>
+<span class="kw">from</span> sqlalchemy.ext.asyncio <span class="kw">import</span> AsyncSession, create_async_engine
+<span class="kw">from</span> sqlalchemy.orm <span class="kw">import</span> sessionmaker
+
+engine = create_async_engine(settings.DATABASE_URL, echo=<span class="kw">False</span>)
+AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=<span class="kw">False</span>)
+
+<span class="kw">async def</span> <span class="fn">get_db_session</span>(request: Request):
+    <span class="kw">async with</span> AsyncSessionLocal() <span class="kw">as</span> session:
+        school_id = getattr(request.state, <span class="str">"school_id"</span>, <span class="kw">None</span>)
+        <span class="kw">if</span> school_id:
+            <span class="cm"># set PostgreSQL RLS context variable</span>
+            <span class="kw">await</span> session.execute(
+                text(<span class="str">"SELECT set_config('app.school_id', :sid, true)"</span>),
+                {<span class="str">"sid"</span>: str(school_id)}
+            )
+        <span class="kw">yield</span> session</div>
+</section>
+
+<!-- ═══ AUTH ENDPOINTS ═══ -->
+<section id="s-auth-ep" style="display:none">
+<div class="page-hdr">
+  <div class="page-title">Auth Endpoints</div>
+</div>
+<div class="endpoint-row">
+  <span class="method m-post">POST</span>
+  <div><div class="ep-path">/api/v1/auth/oidc/callback</div><div class="ep-desc">Terima authorization code dari OIDC provider. Exchange ke token. Set HttpOnly cookie. Return user info.</div></div>
+</div>
+<div class="endpoint-row">
+  <span class="method m-post">POST</span>
+  <div><div class="ep-path">/api/v1/auth/refresh</div><div class="ep-desc">Silent refresh menggunakan refresh_token dari HttpOnly cookie. Return access token baru.</div></div>
+</div>
+<div class="endpoint-row">
+  <span class="method m-post">POST</span>
+  <div><div class="ep-path">/api/v1/auth/logout</div><div class="ep-desc">Blacklist refresh token di Redis. Clear cookie. Redirect ke OIDC logout endpoint.</div></div>
+</div>
+<div class="endpoint-row">
+  <span class="method m-get">GET</span>
+  <div><div class="ep-path">/api/v1/auth/me</div><div class="ep-desc">Return info user dari JWT: user_id, school_id, roles, name, email.</div></div>
+</div>
+
+<div class="section-title">auth/router.py — OIDC Cookie Strategy</div>
+<div class="code"><button class="copy-btn" onclick="copyCode(this)">copy</button><span class="cm"># src/api/v1/auth/router.py</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter, Depends, Response, Request
+<span class="kw">from</span> fastapi.responses <span class="kw">import</span> JSONResponse
+<span class="kw">from</span> .schemas <span class="kw">import</span> OIDCCallbackRequest, TokenResponse, UserInfoResponse
+<span class="kw">from</span> services.auth_service <span class="kw">import</span> AuthService
+
+router = APIRouter(prefix=<span class="str">"/auth"</span>, tags=[<span class="str">"auth"</span>])
+
+<span class="dec">@router.post</span>(<span class="str">"/oidc/callback"</span>, response_model=UserInfoResponse)
+<span class="kw">async def</span> <span class="fn">oidc_callback</span>(
+    payload: OIDCCallbackRequest,
+    response: Response,
+    svc: AuthService = Depends()
+):
+    tokens = <span class="kw">await</span> svc.exchange_code(payload.code, payload.redirect_uri)
+
+    <span class="cm"># Set HttpOnly cookie — TIDAK boleh diakses JavaScript</span>
+    response.set_cookie(
+        key=<span class="str">"access_token"</span>,
+        value=tokens.access_token,
+        httponly=<span class="kw">True</span>,
+        secure=<span class="kw">True</span>,
+        samesite=<span class="str">"strict"</span>,
+        max_age=<span class="fn">900</span>,              <span class="cm"># 15 menit</span>
+        path=<span class="str">"/"</span>,
+    )
+    response.set_cookie(
+        key=<span class="str">"refresh_token"</span>,
+        value=tokens.refresh_token,
+        httponly=<span class="kw">True</span>,
+        secure=<span class="kw">True</span>,
+        samesite=<span class="str">"strict"</span>,
+        max_age=<span class="fn">86400</span> * <span class="fn">7</span>,       <span class="cm"># 7 hari</span>
+        path=<span class="str">"/api/v1/auth/refresh"</span>,  <span class="cm"># path-limited</span>
+    )
+    <span class="kw">return</span> tokens.user_info
+
+<span class="dec">@router.post</span>(<span class="str">"/logout"</span>)
+<span class="kw">async def</span> <span class="fn">logout</span>(request: Request, response: Response, svc: AuthService = Depends()):
+    refresh = request.cookies.get(<span class="str">"refresh_token"</span>)
+    <span class="kw">if</span> refresh:
+        <span class="kw">await</span> svc.blacklist_token(refresh)
+    response.delete_cookie(<span class="str">"access_token"</span>)
+    response.delete_cookie(<span class="str">"refresh_token"</span>)
+    <span class="kw">return</span> {<span class="str">"ok"</span>: <span class="kw">True</span>}</div>
+</section>
+
+<!-- ═══ SCHOOLS ENDPOINTS ═══ -->
+<section id="s-schools-ep" style="display:none">
+<div class="page-hdr"><div class="page-title">Schools Endpoints</div></div>
+<div class="endpoint-row"><span class="method m-post">POST</span><div><div class="ep-path">/api/v1/schools</div><div class="ep-desc">Create school baru. Status: onboarding. Return: school_id. Body: {name, domain, phone, npsn?}</div></div></div>
+<div class="endpoint-row"><span class="method m-get">GET</span><div><div class="ep-path">/api/v1/schools/{id}</div><div class="ep-desc">Get school detail. Scoped ke school_id dari JWT. Return: school full object + onboarding_step.</div></div></div>
+<div class="endpoint-row"><span class="method m-put">PUT</span><div><div class="ep-path">/api/v1/schools/{id}</div><div class="ep-desc">Update school info. Hanya admin. Body: {name?, phone?, address?}</div></div></div>
+<div class="endpoint-row"><span class="method m-post">POST</span><div><div class="ep-path">/api/v1/schools/{id}/onboarding/step/{n}</div><div class="ep-desc">Submit data untuk step onboarding (1=info, 2=admin, 3=integration). Auto-advance status.</div></div></div>
+<div class="endpoint-row"><span class="method m-post">POST</span><div><div class="ep-path">/api/v1/schools/{id}/activate</div><div class="ep-desc">Finalize onboarding. Set status=active. Trigger welcome email. Admin only.</div></div></div>
+<div class="endpoint-row"><span class="method m-get">GET</span><div><div class="ep-path">/api/v1/schools/{id}/sso-config</div><div class="ep-desc">Ambil konfigurasi SSO (OIDC/SAML) untuk sekolah.</div></div></div>
+<div class="endpoint-row"><span class="method m-put">PUT</span><div><div class="ep-path">/api/v1/schools/{id}/sso-config</div><div class="ep-desc">Update SSO config. Body: {provider, client_id, discovery_url, attribute_mapping?}</div></div></div>
+</section>
+
+<!-- ═══ INTEGRATIONS ENDPOINTS ═══ -->
+<section id="s-integrations-ep" style="display:none">
+<div class="page-hdr"><div class="page-title">Integrations Endpoints</div></div>
+<div class="endpoint-row"><span class="method m-post">POST</span><div><div class="ep-path">/api/v1/integrations</div><div class="ep-desc">Create integration_connection. Body: {provider, credentials_enc, config}. Status awal: pending.</div></div></div>
+<div class="endpoint-row"><span class="method m-get">GET</span><div><div class="ep-path">/api/v1/integrations</div><div class="ep-desc">List semua connections milik sekolah. Includes: provider, status, last_tested_at.</div></div></div>
+<div class="endpoint-row"><span class="method m-put">PUT</span><div><div class="ep-path">/api/v1/integrations/{id}</div><div class="ep-desc">Update credentials/config. Trigger re-test setelah update. Body: {credentials_enc?, config?}</div></div></div>
+<div class="endpoint-row"><span class="method m-post">POST</span><div><div class="ep-path">/api/v1/integrations/{id}/test</div><div class="ep-desc">Async test koneksi. Publish ke MQ. Return: {job_id}. Poll status via GET test/{job_id}.</div></div></div>
+<div class="endpoint-row"><span class="method m-get">GET</span><div><div class="ep-path">/api/v1/integrations/{id}/objects</div><div class="ep-desc">List object types dari SIS vendor (e.g. STUDENT, CLASS, GRADE). Untuk mapping UI.</div></div></div>
+<div class="endpoint-row"><span class="method m-put">PUT</span><div><div class="ep-path">/api/v1/integrations/{id}/field-map</div><div class="ep-desc">Bulk upsert field mappings. Body: [{source_field, target_field, transform_fn?}[]]. Idempotent.</div></div></div>
+<div class="endpoint-row"><span class="method m-get">GET</span><div><div class="ep-path">/api/v1/integrations/{id}/field-map</div><div class="ep-desc">Get current field mappings dengan sample values dari last sync.</div></div></div>
+
+<div class="section-title">integrations/router.py — Key Route</div>
+<div class="code"><button class="copy-btn" onclick="copyCode(this)">copy</button><span class="cm"># src/api/v1/integrations/router.py</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter, Depends, status, BackgroundTasks
+<span class="kw">from</span> uuid <span class="kw">import</span> UUID
+<span class="kw">from</span> .schemas <span class="kw">import</span> (
+    CreateConnectionRequest, ConnectionResponse,
+    FieldMapUpdateRequest, FieldMapResponse
+)
+<span class="kw">from</span> services.integration_service <span class="kw">import</span> IntegrationService
+<span class="kw">from</span> middleware.auth_middleware <span class="kw">import</span> require_role, get_current_school_id
+
+router = APIRouter(prefix=<span class="str">"/integrations"</span>, tags=[<span class="str">"integrations"</span>])
+
+<span class="dec">@router.post</span>(<span class="str">""</span>, response_model=ConnectionResponse, status_code=status.HTTP_201_CREATED)
+<span class="kw">async def</span> <span class="fn">create_connection</span>(
+    payload: CreateConnectionRequest,
+    school_id: UUID = Depends(get_current_school_id),
+    svc: IntegrationService = Depends(),
+    _: dict = Depends(require_role(<span class="str">"admin"</span>)),
+):
+    conn = <span class="kw">await</span> svc.create_connection(school_id=school_id, payload=payload)
+    <span class="kw">return</span> ConnectionResponse.model_validate(conn)
+
+<span class="dec">@router.put</span>(<span class="str">"/{conn_id}/field-map"</span>, response_model=list[FieldMapResponse])
+<span class="kw">async def</span> <span class="fn">update_field_map</span>(
+    conn_id: UUID,
+    payload: FieldMapUpdateRequest,
+    school_id: UUID = Depends(get_current_school_id),
+    svc: IntegrationService = Depends(),
+    _: dict = Depends(require_role(<span class="str">"admin"</span>, <span class="str">"pembuat_soal"</span>)),
+):
+    <span class="cm"># Idempotent upsert — aman dipanggil berulang</span>
+    mappings = <span class="kw">await</span> svc.upsert_field_map(
+        school_id=school_id, conn_id=conn_id, rows=payload.mappings
+    )
+    <span class="kw">return</span> [FieldMapResponse.model_validate(m) <span class="kw">for</span> m <span class="kw">in</span> mappings]</div>
+</section>
+
+<!-- ═══ SYNC ENDPOINTS ═══ -->
+<section id="s-sync-ep" style="display:none">
+<div class="page-hdr"><div class="page-title">Sync Job Endpoints</div></div>
+<div class="endpoint-row"><span class="method m-post">POST</span><div><div class="ep-path">/api/v1/sync-jobs</div><div class="ep-desc">Create sync job. Body: {integration_id, name, schedule_cron?}. Publish ke MQ jika triggered_now=true.</div></div></div>
+<div class="endpoint-row"><span class="method m-get">GET</span><div><div class="ep-path">/api/v1/sync-jobs</div><div class="ep-desc">List jobs milik sekolah. Filter: status, integration_id. Paginated.</div></div></div>
+<div class="endpoint-row"><span class="method m-get">GET</span><div><div class="ep-path">/api/v1/sync-jobs/{id}</div><div class="ep-desc">Get job detail + last 5 runs.</div></div></div>
+<div class="endpoint-row"><span class="method m-post">POST</span><div><div class="ep-path">/api/v1/sync-jobs/{id}/trigger</div><div class="ep-desc">Manual trigger sync. Return: {run_id}. Idempotent jika sudah ada run yang running.</div></div></div>
+<div class="endpoint-row"><span class="method m-get">GET</span><div><div class="ep-path">/api/v1/sync-jobs/{id}/runs</div><div class="ep-desc">List semua run untuk job ini. Includes: status, duration, records_synced, error.</div></div></div>
+<div class="endpoint-row"><span class="method m-get">GET</span><div><div class="ep-path">/api/v1/sync-jobs/{id}/runs/{run_id}/logs</div><div class="ep-desc">Fetch structured logs untuk satu run. Paginated. Filter: level (ERROR, WARN, INFO).</div></div></div>
+<div class="endpoint-row"><span class="method m-get">GET</span><div><div class="ep-path">/api/v1/sync-jobs/dlq</div><div class="ep-desc">List dead-letter jobs. Filter: school_id (auto dari JWT). Includes: error, attempts, payload.</div></div></div>
+<div class="endpoint-row"><span class="method m-post">POST</span><div><div class="ep-path">/api/v1/sync-jobs/dlq/{id}/reprocess</div><div class="ep-desc">Re-enqueue job dari DLQ. Admin only. Dry-run mode tersedia.</div></div></div>
+
+<div class="section-title">sync/router.py — Create + Status</div>
+<div class="code"><button class="copy-btn" onclick="copyCode(this)">copy</button><span class="cm"># src/api/v1/sync/router.py</span>
+<span class="kw">from</span> fastapi <span class="kw">import</span> APIRouter, Depends, Query, status
+<span class="kw">from</span> uuid <span class="kw">import</span> UUID
+<span class="kw">from</span> .schemas <span class="kw">import</span> CreateSyncJobRequest, SyncJobResponse, SyncJobRunResponse
+<span class="kw">from</span> services.sync_service <span class="kw">import</span> SyncService
+<span class="kw">from</span> middleware.auth_middleware <span class="kw">import</span> require_role, get_current_school_id
+
+router = APIRouter(prefix=<span class="str">"/sync-jobs"</span>, tags=[<span class="str">"sync"</span>])
+
+<span class="dec">@router.post</span>(<span class="str">""</span>, response_model=SyncJobResponse, status_code=status.HTTP_201_CREATED)
+<span class="kw">async def</span> <span class="fn">create_sync_job</span>(
+    payload: CreateSyncJobRequest,
+    school_id: UUID = Depends(get_current_school_id),
+    svc: SyncService = Depends(),
+    _: dict = Depends(require_role(<span class="str">"admin"</span>, <span class="str">"pembuat_soal"</span>)),
+):
+    job = <span class="kw">await</span> svc.create_and_enqueue(school_id=school_id, payload=payload)
+    <span class="kw">return</span> SyncJobResponse.model_validate(job)
+
+<span class="dec">@router.post</span>(<span class="str">"/{job_id}/trigger"</span>, response_model=dict)
+<span class="kw">async def</span> <span class="fn">trigger_sync</span>(
+    job_id: UUID,
+    school_id: UUID = Depends(get_current_school_id),
+    svc: SyncService = Depends(),
+    _: dict = Depends(require_role(<span class="str">"admin"</span>, <span class="str">"pembuat_soal"</span>)),
+):
+    run_id = <span class="kw">await</span> svc.trigger(school_id=school_id, job_id=job_id)
+    <span class="kw">return</span> {<span class="str">"run_id"</span>: str(run_id), <span class="str">"status"</span>: <span class="str">"queued"</span>}
+
+<span class="dec">@router.get</span>(<span class="str">"/{job_id}/runs"</span>, response_model=list[SyncJobRunResponse])
+<span class="kw">async def</span> <span class="fn">list_runs</span>(
+    job_id: UUID,
+    limit: int = Query(<span class="fn">20</span>, le=<span class="fn">100</span>),
+    offset: int = Query(<span class="fn">0</span>),
+    school_id: UUID = Depends(get_current_school_id),
+    svc: SyncService = Depends(),
+    _: dict = Depends(require_role(<span class="str">"admin"</span>, <span class="str">"pembuat_soal"</span>, <span class="str">"pengawas"</span>)),
+):
+    runs = <span class="kw">await</span> svc.list_runs(school_id=school_id, job_id=job_id, limit=limit, offset=offset)
+    <span class="kw">return</span> [SyncJobRunResponse.model_validate(r) <span class="kw">for</span> r <span class="kw">in</span> runs]</div>
+</section>
+
+<!-- ═══ USERS ENDPOINTS ═══ -->
+<section id="s-users-ep" style="display:none">
+<div class="page-hdr"><div class="page-title">Users & Roles Endpoints</div></div>
+<div class="endpoint-row"><span class="method m-get">GET</span><div><div class="ep-path">/api/v1/users</div><div class="ep-desc">List users per sekolah. Paginated. Scoped ke school_id dari JWT.</div></div></div>
+<div class="endpoint-row"><span class="method m-post">POST</span><div><div class="ep-path">/api/v1/users/invite</div><div class="ep-desc">Undang user via email. Kirim invitation link. Body: {email, name, role}. Admin only.</div></div></div>
+<div class="endpoint-row"><span class="method m-put">PUT</span><div><div class="ep-path">/api/v1/users/{id}/role</div><div class="ep-desc">Assign/update role user. Body: {role: 'admin'|'pembuat_soal'|'pengawas'}. Audit log otomatis.</div></div></div>
+<div class="endpoint-row"><span class="method m-post">POST</span><div><div class="ep-path">/api/v1/users/{id}/suspend</div><div class="ep-desc">Suspend user account. Invalidate semua session aktif via Redis. Admin only.</div></div></div>
+<div class="endpoint-row"><span class="method m-del">DEL</span><div><div class="ep-path">/api/v1/users/{id}</div><div class="ep-desc">Soft delete user. Status=deleted. Data tetap ada untuk audit. Admin only.</div></div></div>
+</section>
+
+<!-- ═══ ADMIN ENDPOINTS ═══ -->
+<section id="s-admin-ep" style="display:none">
+<div class="page-hdr"><div class="page-title">Admin Endpoints</div><div class="page-sub">Platform-level. Hanya super_admin role dari JWT platform claim. Bukan school admin biasa.</div></div>
+<div class="endpoint-row"><span class="method m-post">POST</span><div><div class="ep-path">/api/v1/admin/schools/{id}/isolate</div><div class="ep-desc">Isolasi tenant bermasalah. Set status=isolated. Semua request tenant di-reject 403.</div></div></div>
+<div class="endpoint-row"><span class="method m-post">POST</span><div><div class="ep-path">/api/v1/admin/schools/{id}/un-isolate</div><div class="ep-desc">Lepas isolasi setelah investigation selesai. Set status=active.</div></div></div>
+<div class="endpoint-row"><span class="method m-get">GET</span><div><div class="ep-path">/api/v1/admin/audit-events</div><div class="ep-desc">Query audit_event partitioned. Filter: school_id, event_type, from_date, to_date. Paginated.</div></div></div>
+<div class="endpoint-row"><span class="method m-get">GET</span><div><div class="ep-path">/api/v1/admin/platform-stats</div><div class="ep-desc">Agregat stats: total schools, active users, sync success rate, dlq count per tenant.</div></div></div>
+<div class="endpoint-row"><span class="method m-post">POST</span><div><div class="ep-path">/api/v1/admin/dlq/bulk-reprocess</div><div class="ep-desc">Bulk re-enqueue DLQ jobs. Filter: reason, school_id. Dry-run tersedia.</div></div></div>
+</section>
+
+<!-- ═══ FASTAPI CODE ═══ -->
+<section id="s-fastapi-code" style="display:none">
+<div class="page-hdr"><div class="page-title">FastAPI Implementation Details</div></div>
+
+<div class="section-title">settings.py — Pydantic BaseSettings</div>
+<div class="code"><button class="copy-btn" onclick="copyCode(this)">copy</button><span class="cm"># src/config/settings.py</span>
+<span class="kw">from</span> pydantic_settings <span class="kw">import</span> BaseSettings, SettingsConfigDict
+<span class="kw">from</span> functools <span class="kw">import</span> lru_cache
+
+<span class="kw">class</span> <span class="ty">Settings</span>(BaseSettings):
+    model_config = SettingsConfigDict(env_file=<span class="str">".env"</span>, env_file_encoding=<span class="str">"utf-8"</span>)
+
+    ENV: str = <span class="str">"development"</span>
+    DATABASE_URL: str
+    REDIS_URL: str
+    RABBITMQ_URL: str
+
+    <span class="cm"># OIDC</span>
+    OIDC_ISSUER: str
+    OIDC_PUBLIC_KEY: str         <span class="cm"># RS256 public key (PEM)</span>
+    JWT_AUDIENCE: str = <span class="str">"school-api"</span>
+
+    <span class="cm"># CORS</span>
+    ALLOWED_ORIGINS: list[str] = [<span class="str">"http://localhost:3000"</span>]
+
+    <span class="cm"># Rate limiting</span>
+    RATE_LIMIT_AUTH: str = <span class="str">"5/minute"</span>
+    RATE_LIMIT_API: str = <span class="str">"100/minute"</span>
+
+    <span class="cm"># S3 backup</span>
+    S3_BACKUP_BUCKET: str = <span class="str">""</span>
+
+<span class="dec">@lru_cache</span>
+<span class="kw">def</span> <span class="fn">get_settings</span>() -> Settings:
+    <span class="kw">return</span> Settings()
+
+settings = get_settings()</div>
+
+<div class="section-title">structured logging — structlog + redaction</div>
+<div class="code"><button class="copy-btn" onclick="copyCode(this)">copy</button><span class="cm"># src/logging/structured.py</span>
+<span class="kw">import</span> structlog
+<span class="kw">from</span> structlog.types <span class="kw">import</span> EventDict, WrappedLogger
+
+REDACTED_KEYS = {<span class="str">"password"</span>, <span class="str">"token"</span>, <span class="str">"credentials"</span>, <span class="str">"access_token"</span>, <span class="str">"refresh_token"</span>, <span class="str">"secret"</span>}
+
+<span class="kw">def</span> <span class="fn">redact_sensitive</span>(logger: WrappedLogger, method: str, event: EventDict) -> EventDict:
+    <span class="cm">"""""Hapus key sensitif dari log sebelum dikirim ke output."""""</span>
+    <span class="kw">for</span> key <span class="kw">in</span> list(event.keys()):
+        <span class="kw">if</span> key.lower() <span class="kw">in</span> REDACTED_KEYS:
+            event[key] = <span class="str">"[REDACTED]"</span>
+    <span class="kw">return</span> event
+
+structlog.configure(
+    processors=[
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.add_logger_name,
+        structlog.processors.TimeStamper(fmt=<span class="str">"iso"</span>),
+        structlog.processors.StackInfoRenderer(),
+        redact_sensitive,                          <span class="cm"># wajib sebelum renderer</span>
+        structlog.processors.JSONRenderer(),       <span class="cm"># output JSON</span>
+    ],
+    wrapper_class=structlog.stdlib.BoundLogger,
+    context_class=dict,
+    logger_factory=structlog.PrintLoggerFactory(),
+)
+
+log = structlog.get_logger()
+
+<span class="cm"># Contoh penggunaan</span>
+<span class="cm"># log.info("sync.completed", school_id=school_id, run_id=run_id, duration_ms=142)</span></div>
+</section>
+
+<!-- ═══ WORKER CODE ═══ -->
+<section id="s-worker-code" style="display:none">
+<div class="page-hdr"><div class="page-title">Worker Implementation</div><div class="page-sub">ARQ + RabbitMQ. Full retry dengan exponential backoff + jitter. Circuit breaker pattern.</div></div>
+
+<div class="section-title">jobs/sync_job.py — Complete</div>
+<div class="code"><button class="copy-btn" onclick="copyCode(this)">copy</button><span class="cm"># apps/worker/src/jobs/sync_job.py</span>
+<span class="kw">import</span> asyncio, random, math
+<span class="kw">from</span> uuid <span class="kw">import</span> UUID
+<span class="kw">import</span> structlog
+<span class="kw">from</span> opentelemetry <span class="kw">import</span> trace
+
+<span class="kw">from</span> db.session <span class="kw">import</span> get_db
+<span class="kw">from</span> db.repositories.sync_job_repo <span class="kw">import</span> SyncJobRepo
+<span class="kw">from</span> integrations.adapters.registry <span class="kw">import</span> get_adapter
+<span class="kw">from</span> dlq.handler <span class="kw">import</span> send_to_dlq
+<span class="kw">from</span> retry.circuit_breaker <span class="kw">import</span> CircuitBreaker, CircuitOpen
+
+log = structlog.get_logger()
+tracer = trace.get_tracer(<span class="str">"school.worker"</span>)
+
+MAX_ATTEMPTS = 5
+BASE_DELAY_S = 2.0
+
+<span class="kw">class</span> <span class="ty">TransientError</span>(Exception): <span class="kw">pass</span>
+<span class="kw">class</span> <span class="ty">PermanentError</span>(Exception): <span class="kw">pass</span>
+
+<span class="kw">def</span> <span class="fn">full_jitter</span>(attempt: int, base: float = BASE_DELAY_S, cap: float = 60.0) -> float:
+    <span class="cm">"""Full jitter — mencegah thundering herd."""</span>
+    exp = min(cap, base * (2 ** attempt))
+    <span class="kw">return</span> random.uniform(0, exp)
+
+<span class="kw">async def</span> <span class="fn">run_sync_job</span>(ctx: dict, job_id: str, school_id: str, run_id: str):
+    <span class="kw">with</span> tracer.start_as_current_span(<span class="str">"sync_job.run"</span>) <span class="kw">as</span> span:
+        span.set_attribute(<span class="str">"job.id"</span>, job_id)
+        span.set_attribute(<span class="str">"school.id"</span>, school_id)
+
+        bound_log = log.bind(job_id=job_id, school_id=school_id, run_id=run_id)
+        bound_log.info(<span class="str">"sync.started"</span>)
+
+        <span class="kw">async with</span> get_db() <span class="kw">as</span> db:
+            repo = SyncJobRepo(db)
+            <span class="kw">await</span> repo.set_run_status(run_id, <span class="str">"running"</span>)
+
+        <span class="cm"># Ambil adapter berdasarkan provider</span>
+        adapter = get_adapter(job_id=job_id)
+        cb = CircuitBreaker(key=f<span class="str">"sis:{school_id}"</span>)
+
+        <span class="kw">for</span> attempt <span class="kw">in</span> range(1, MAX_ATTEMPTS + 1):
+            <span class="kw">try</span>:
+                <span class="cm"># Circuit breaker akan raise CircuitOpen jika OPEN</span>
+                <span class="kw">async with</span> cb:
+                    data = <span class="kw">await</span> adapter.fetch_data()
+
+                <span class="cm"># Upsert ke DB (idempotent)</span>
+                <span class="kw">async with</span> get_db() <span class="kw">as</span> db:
+                    repo = SyncJobRepo(db)
+                    result = <span class="kw">await</span> repo.upsert_records(school_id, data)
+                    <span class="kw">await</span> repo.complete_run(
+                        run_id,
+                        records_synced=result.inserted + result.updated,
+                        records_failed=result.failed,
+                    )
+
+                bound_log.info(<span class="str">"sync.completed"</span>,
+                    attempt=attempt,
+                    records_synced=result.inserted + result.updated
+                )
+                <span class="kw">return</span>  <span class="cm"># ─ success ─</span>
+
+            <span class="kw">except</span> CircuitOpen:
+                bound_log.warning(<span class="str">"circuit.open"</span>, attempt=attempt)
+                <span class="kw">await</span> send_to_dlq(job_id, school_id, run_id, error=<span class="str">"circuit_open"</span>)
+                <span class="kw">return</span>
+
+            <span class="kw">except</span> PermanentError <span class="kw">as</span> e:
+                bound_log.error(<span class="str">"sync.permanent_failure"</span>, error=str(e))
+                <span class="kw">async with</span> get_db() <span class="kw">as</span> db:
+                    <span class="kw">await</span> SyncJobRepo(db).fail_run(run_id, str(e))
+                <span class="kw">await</span> send_to_dlq(job_id, school_id, run_id, error=str(e), permanent=<span class="kw">True</span>)
+                <span class="kw">return</span>
+
+            <span class="kw">except</span> TransientError <span class="kw">as</span> e:
+                <span class="kw">if</span> attempt >= MAX_ATTEMPTS:
+                    bound_log.error(<span class="str">"sync.max_retries_exceeded"</span>, attempts=attempt)
+                    <span class="kw">async with</span> get_db() <span class="kw">as</span> db:
+                        <span class="kw">await</span> SyncJobRepo(db).fail_run(run_id, str(e))
+                    <span class="kw">await</span> send_to_dlq(job_id, school_id, run_id, error=str(e), attempts=attempt)
+                    <span class="kw">return</span>
+
+                delay = full_jitter(attempt)
+                bound_log.warning(<span class="str">"sync.retry"</span>, attempt=attempt, delay_s=round(delay, 2))
+                <span class="kw">await</span> asyncio.sleep(delay)</div>
+
+<div class="section-title">retry/circuit_breaker.py</div>
+<div class="code"><button class="copy-btn" onclick="copyCode(this)">copy</button><span class="cm"># apps/worker/src/retry/circuit_breaker.py</span>
+<span class="kw">import</span> asyncio
+<span class="kw">from</span> enum <span class="kw">import</span> auto, Enum
+
+<span class="kw">class</span> <span class="ty">State</span>(Enum):
+    CLOSED = auto(); OPEN = auto(); HALF_OPEN = auto()
+
+<span class="kw">class</span> <span class="ty">CircuitOpen</span>(Exception): <span class="kw">pass</span>
+
+<span class="cm"># In-memory (pakai Redis untuk multi-worker production)</span>
+_registry: dict[str, <span class="str">"CircuitBreaker"</span>] = {}
+
+<span class="kw">class</span> <span class="ty">CircuitBreaker</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, key: str, threshold: int = 5, reset_timeout: int = 30):
+        <span class="kw">if</span> key <span class="kw">not in</span> _registry:
+            _registry[key] = self
+            self.key = key; self.threshold = threshold
+            self.reset_timeout = reset_timeout
+            self._state = State.CLOSED; self._failures = 0; self._opened_at = <span class="kw">None</span>
+        <span class="kw">else</span>:
+            <span class="cm"># Kembalikan instance yang sudah ada</span>
+            existing = _registry[key]
+            self.__dict__ = existing.__dict__
+
+    <span class="kw">async def</span> <span class="fn">__aenter__</span>(self):
+        <span class="kw">if</span> self._state == State.OPEN:
+            <span class="kw">if</span> asyncio.get_event_loop().time() - self._opened_at > self.reset_timeout:
+                self._state = State.HALF_OPEN
+            <span class="kw">else</span>:
+                <span class="kw">raise</span> CircuitOpen(f<span class="str">"Circuit {self.key} is OPEN"</span>)
+        <span class="kw">return</span> self
+
+    <span class="kw">async def</span> <span class="fn">__aexit__</span>(self, exc_type, exc, tb):
+        <span class="kw">if</span> exc_type <span class="kw">is None</span>:
+            <span class="cm"># success — reset</span>
+            self._failures = 0; self._state = State.CLOSED
+        <span class="kw">else</span>:
+            self._failures += 1
+            <span class="kw">if</span> self._failures >= self.threshold:
+                self._state = State.OPEN
+                self._opened_at = asyncio.get_event_loop().time()
+        <span class="kw">return</span> <span class="kw">False</span>  <span class="cm"># jangan suppress exception</span></div>
+</section>
+
+<!-- ═══ DB LAYER ═══ -->
+<section id="s-db-layer" style="display:none">
+<div class="page-hdr"><div class="page-title">Database Layer (Repository Pattern)</div></div>
+
+<div class="section-title">SyncJobRepo — Key Methods</div>
+<div class="code"><button class="copy-btn" onclick="copyCode(this)">copy</button><span class="cm"># src/db/repositories/sync_job_repo.py</span>
+<span class="kw">from</span> sqlalchemy.ext.asyncio <span class="kw">import</span> AsyncSession
+<span class="kw">from</span> sqlalchemy <span class="kw">import</span> text, select, update
+<span class="kw">from</span> models.sync_job <span class="kw">import</span> SyncJobRun, SyncJobDLQ
+<span class="kw">from</span> uuid <span class="kw">import</span> UUID
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime, timezone
+
+<span class="kw">class</span> <span class="ty">SyncJobRepo</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, session: AsyncSession):
+        self.db = session
+
+    <span class="kw">async def</span> <span class="fn">create_run</span>(self, job_id: UUID, school_id: UUID, triggered_by: str = <span class="str">"scheduler"</span>) -> str:
+        run = SyncJobRun(job_id=job_id, school_id=school_id, triggered_by=triggered_by)
+        self.db.add(run)
+        <span class="kw">await</span> self.db.flush()
+        <span class="kw">return</span> str(run.id)
+
+    <span class="kw">async def</span> <span class="fn">fetch_pending</span>(self, limit: int = 10) -> list[SyncJobRun]:
+        <span class="cm">"""FOR UPDATE SKIP LOCKED — aman untuk multi-worker."""</span>
+        result = <span class="kw">await</span> self.db.execute(
+            text(<span class="str">"""
+                SELECT * FROM sync_job_run
+                WHERE status = 'queued'
+                ORDER BY created_at
+                LIMIT :limit
+                FOR UPDATE SKIP LOCKED
+            """</span>),
+            {<span class="str">"limit"</span>: limit}
+        )
+        <span class="kw">return</span> result.mappings().all()
+
+    <span class="kw">async def</span> <span class="fn">complete_run</span>(self, run_id: str, records_synced: int, records_failed: int = 0):
+        <span class="kw">await</span> self.db.execute(
+            update(SyncJobRun)
+            .where(SyncJobRun.id == UUID(run_id))
+            .values(
+                status=<span class="str">"done"</span>,
+                records_synced=records_synced,
+                records_failed=records_failed,
+                finished_at=datetime.now(timezone.utc),
+            )
+        )
+        <span class="kw">await</span> self.db.commit()
+
+    <span class="kw">async def</span> <span class="fn">fail_run</span>(self, run_id: str, error_message: str):
+        <span class="kw">await</span> self.db.execute(
+            update(SyncJobRun)
+            .where(SyncJobRun.id == UUID(run_id))
+            .values(status=<span class="str">"failed"</span>, error_message=error_message[:2048],
+                    finished_at=datetime.now(timezone.utc))
+        )
+        <span class="kw">await</span> self.db.commit()
+
+    <span class="kw">async def</span> <span class="fn">upsert_records</span>(self, school_id: UUID, data: list[dict]) -> object:
+        <span class="cm">"""Bulk upsert dengan ON CONFLICT DO UPDATE — idempotent."""</span>
+        <span class="kw">if not</span> data:
+            <span class="kw">return</span> type(<span class="str">"R"</span>, (), {<span class="str">"inserted"</span>: 0, <span class="str">"updated"</span>: 0, <span class="str">"failed"</span>: 0})()
+
+        <span class="cm"># Gunakan execute_many dengan ON CONFLICT</span>
+        result = <span class="kw">await</span> self.db.execute(
+            text(<span class="str">"""
+                INSERT INTO siswa (school_id, nis, nama, kelas, data)
+                VALUES (:school_id, :nis, :nama, :kelas, :data)
+                ON CONFLICT (school_id, nis)
+                DO UPDATE SET
+                    nama  = EXCLUDED.nama,
+                    kelas = EXCLUDED.kelas,
+                    data  = EXCLUDED.data,
+                    updated_at = now()
+                RETURNING (xmax = 0) AS inserted
+            """</span>),
+            [{<span class="str">"school_id"</span>: str(school_id), **row} <span class="kw">for</span> row <span class="kw">in</span> data]
+        )
+        rows = result.fetchall()
+        inserted = sum(1 <span class="kw">for</span> r <span class="kw">in</span> rows <span class="kw">if</span> r.inserted)
+        <span class="kw">return</span> type(<span class="str">"R"</span>, (), {<span class="str">"inserted"</span>: inserted, <span class="str">"updated"</span>: len(rows)-inserted, <span class="str">"failed"</span>: 0})()</div>
+</section>
+
+<!-- ═══ OBSERVABILITY ═══ -->
+<section id="s-observability" style="display:none">
+<div class="page-hdr"><div class="page-title">Observability Setup</div></div>
+
+<div class="section-title">OTel Setup (config/otel.py)</div>
+<div class="code"><button class="copy-btn" onclick="copyCode(this)">copy</button><span class="cm"># src/config/otel.py</span>
+<span class="kw">from</span> opentelemetry <span class="kw">import</span> trace, metrics
+<span class="kw">from</span> opentelemetry.sdk.trace <span class="kw">import</span> TracerProvider
+<span class="kw">from</span> opentelemetry.sdk.trace.sampling <span class="kw">import</span> TraceIdRatioBased
+<span class="kw">from</span> opentelemetry.sdk.trace.export <span class="kw">import</span> BatchSpanProcessor
+<span class="kw">from</span> opentelemetry.exporter.otlp.proto.grpc.trace_exporter <span class="kw">import</span> OTLPSpanExporter
+<span class="kw">from</span> opentelemetry.sdk.metrics <span class="kw">import</span> MeterProvider
+<span class="kw">from</span> opentelemetry.exporter.prometheus <span class="kw">import</span> PrometheusMetricReader
+<span class="kw">from</span> prometheus_client <span class="kw">import</span> Counter, Histogram, Gauge
+
+<span class="kw">def</span> <span class="fn">setup_otel</span>(service_name: str):
+    <span class="cm"># Traces — 10% sampling, 100% untuk error/slow</span>
+    provider = TracerProvider(sampler=TraceIdRatioBased(<span class="fn">0.10</span>))
+    provider.add_span_processor(
+        BatchSpanProcessor(OTLPSpanExporter(endpoint=<span class="str">"otel-collector:4317"</span>))
+    )
+    trace.set_tracer_provider(provider)
+
+    <span class="cm"># Metrics — expose via /metrics untuk Prometheus scrape</span>
+    metrics.set_meter_provider(
+        MeterProvider(metric_readers=[PrometheusMetricReader()])
+    )
+
+<span class="cm"># Prometheus metrics — didefinisikan sekali di module level</span>
+api_duration = Histogram(
+    <span class="str">'http_request_duration_seconds'</span>, <span class="str">'API latency'</span>,
+    [<span class="str">'method'</span>, <span class="str">'endpoint'</span>, <span class="str">'status'</span>],
+    buckets=[.01, .05, .1, .2, .3, .5, 1, 2, 5]
+)
+sync_success = Counter(<span class="str">'sync_job_success_total'</span>,   <span class="str">'Sync berhasil'</span>,    [<span class="str">'provider'</span>])
+sync_failure = Counter(<span class="str">'sync_job_failure_total'</span>,   <span class="str">'Sync gagal'</span>,       [<span class="str">'provider'</span>])
+dlq_total    = Counter(<span class="str">'sync_job_dlq_total'</span>,       <span class="str">'Dead letter count'</span>, [<span class="str">'reason'</span>])
+queue_depth  = Gauge  (<span class="str">'rabbitmq_queue_depth'</span>,     <span class="str">'Queue depth'</span>,      [<span class="str">'queue'</span>])
+db_conns     = Gauge  (<span class="str">'db_connections_active'</span>,    <span class="str">'DB connections'</span>)</div>
+</section>
+
+<!-- ═══ DOCKER ═══ -->
+<section id="s-docker" style="display:none">
+<div class="page-hdr"><div class="page-title">Docker & Kubernetes</div></div>
+
+<div class="section-title">Dockerfile — Backend Multi-stage</div>
+<div class="code"><button class="copy-btn" onclick="copyCode(this)">copy</button><span class="cm"># apps/api/Dockerfile</span>
+<span class="kw">FROM</span> python:3.12-slim <span class="kw">AS</span> builder
+WORKDIR /app
+<span class="kw">RUN</span> pip install --no-cache-dir uv
+<span class="kw">COPY</span> pyproject.toml uv.lock ./
+<span class="kw">RUN</span> uv pip install --system --no-cache -r pyproject.toml
+
+<span class="kw">FROM</span> python:3.12-slim <span class="kw">AS</span> runtime
+<span class="kw">RUN</span> useradd --no-create-home --no-log-init appuser
+WORKDIR /app
+<span class="kw">COPY</span> --from=builder /usr/local/lib/python3.12/site-packages \
+                    /usr/local/lib/python3.12/site-packages
+<span class="kw">COPY</span> src/ ./src/
+<span class="kw">USER</span> appuser
+<span class="kw">EXPOSE</span> 8000
+<span class="kw">HEALTHCHECK</span> --interval=30s --timeout=5s --start-period=10s \
+  <span class="kw">CMD</span> curl -f http://localhost:8000/health || exit 1
+<span class="kw">CMD</span> ["uvicorn", "src.main:app",
+     "--host", "0.0.0.0", "--port", "8000",
+     "--workers", "2",
+     "--timeout-keep-alive", "30"]</div>
+
+<div class="section-title">K8s — Full Deployment + Service + ConfigMap</div>
+<div class="code"><button class="copy-btn" onclick="copyCode(this)">copy</button"><span class="cm"># k8s/api-deployment.yaml</span>
+<span class="kw">apiVersion</span>: apps/v1
+<span class="kw">kind</span>: Deployment
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: api-server
+  <span class="kw">namespace</span>: school-prod
+<span class="kw">spec</span>:
+  <span class="kw">replicas</span>: 3
+  <span class="kw">strategy</span>:
+    <span class="kw">type</span>: RollingUpdate
+    <span class="kw">rollingUpdate</span>: {maxSurge: 1, maxUnavailable: 0}
+  <span class="kw">selector</span>:
+    <span class="kw">matchLabels</span>: {app: api-server}
+  <span class="kw">template</span>:
+    <span class="kw">metadata</span>:
+      <span class="kw">labels</span>: {app: api-server}
+      <span class="kw">annotations</span>:
+        <span class="kw">prometheus.io/scrape</span>: <span class="str">"true"</span>
+        <span class="kw">prometheus.io/port</span>: <span class="str">"8000"</span>
+    <span class="kw">spec</span>:
+      <span class="kw">terminationGracePeriodSeconds</span>: 60
+      <span class="kw">containers</span>:
+      - <span class="kw">name</span>: api
+        <span class="kw">image</span>: registry.io/school-api:{{IMAGE_TAG}}
+        <span class="kw">ports</span>: [{containerPort: 8000}]
+        <span class="kw">resources</span>:
+          <span class="kw">requests</span>: {cpu: <span class="str">"250m"</span>, memory: <span class="str">"256Mi"</span>}
+          <span class="kw">limits</span>:   {cpu: <span class="str">"500m"</span>, memory: <span class="str">"512Mi"</span>}
+        <span class="kw">livenessProbe</span>:
+          <span class="kw">httpGet</span>: {path: /health, port: 8000}
+          <span class="kw">initialDelaySeconds</span>: 10; <span class="kw">periodSeconds</span>: 15
+        <span class="kw">readinessProbe</span>:
+          <span class="kw">httpGet</span>: {path: /ready, port: 8000}
+          <span class="kw">initialDelaySeconds</span>: 5; <span class="kw">periodSeconds</span>: 10
+        <span class="kw">env</span>:
+        - <span class="kw">name</span>: DATABASE_URL
+          <span class="kw">valueFrom</span>:
+            <span class="kw">secretKeyRef</span>: {name: api-secrets, key: database-url}
+        - <span class="kw">name</span>: REDIS_URL
+          <span class="kw">valueFrom</span>:
+            <span class="kw">secretKeyRef</span>: {name: api-secrets, key: redis-url}
+        <span class="kw">envFrom</span>:
+        - <span class="kw">configMapRef</span>: {name: api-config}
+---
+<span class="kw">apiVersion</span>: autoscaling/v2
+<span class="kw">kind</span>: HorizontalPodAutoscaler
+<span class="kw">metadata</span>: {name: api-hpa, namespace: school-prod}
+<span class="kw">spec</span>:
+  <span class="kw">scaleTargetRef</span>:
+    <span class="kw">apiVersion</span>: apps/v1; <span class="kw">kind</span>: Deployment; <span class="kw">name</span>: api-server
+  <span class="kw">minReplicas</span>: 3; <span class="kw">maxReplicas</span>: 20
+  <span class="kw">metrics</span>:
+  - <span class="kw">type</span>: Resource
+    <span class="kw">resource</span>:
+      <span class="kw">name</span>: cpu
+      <span class="kw">target</span>: {<span class="kw">type</span>: Utilization, <span class="kw">averageUtilization</span>: 60}
+  - <span class="kw">type</span>: Resource
+    <span class="kw">resource</span>:
+      <span class="kw">name</span>: memory
+      <span class="kw">target</span>: {<span class="kw">type</span>: Utilization, <span class="kw">averageUtilization</span>: 75}
+  <span class="kw">behavior</span>:
+    <span class="kw">scaleDown</span>:
+      <span class="kw">stabilizationWindowSeconds</span>: 300   <span class="cm"># tunggu 5 menit sebelum scale-in</span></div>
+</section>
+
+</div>
+</main>
+</div>
+
+<script>
+function show(id, btn) {
+  document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('on'));
+  const el = document.getElementById('s-' + id);
+  if (el) el.style.display = 'block';
+  if (btn) btn.classList.add('on');
+  document.querySelector('.main').scrollTop = 0;
+}
+function copyCode(btn) {
+  const code = btn.closest('.code');
+  const text = code.innerText.replace('copy\n','').replace('copy','');
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 1800);
+  });
+}
+</script>
+</body>
+</html>

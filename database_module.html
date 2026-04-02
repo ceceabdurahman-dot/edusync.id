@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Database Module — PostgreSQL Deep Dive</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F2F0EB;--bg2:#E8E5DF;--bg3:#DDDAD3;
+  --text:#1C1B18;--text2:#5A5950;--text3:#8C8B82;
+  --border:rgba(28,27,24,0.1);--border2:rgba(28,27,24,0.2);
+  --accent:#1A56A4;--accent-bg:#EBF1FA;--accent-text:#0D3268;
+  --success:#0D7A55;--success-bg:#E4F5EE;--success-text:#064530;
+  --warn:#9A5C00;--warn-bg:#FEF3DC;--warn-text:#5A3500;
+  --danger:#B52626;--danger-bg:#FDEAEA;--danger-text:#6B1414;
+  --amber:#8B6000;--amber-bg:#FEF8E6;--amber-text:#5A3A00;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --r:8px;--rl:12px;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:13px;line-height:1.6;min-height:100vh}
+.shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.sidebar{background:#12110C;padding:0;position:sticky;top:0;height:100vh;overflow-y:auto;scrollbar-width:none}
+.sidebar::-webkit-scrollbar{display:none}
+.sidebar-logo{padding:18px 16px 14px;border-bottom:0.5px solid rgba(255,255,255,0.07)}
+.sidebar-logo .mark{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#5A5950}
+.sidebar-logo .name{font-size:14px;font-weight:600;color:#F0EEE8;margin-top:2px;letter-spacing:-.01em}
+.nav-section{padding:10px 0 4px}
+.nav-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#343430;padding:0 14px 4px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 14px;font-size:12px;color:#6A6960;cursor:pointer;transition:all .12s;border:none;background:none;width:100%;text-align:left;font-family:var(--sans)}
+.nav-item:hover{color:#D4D2CC;background:rgba(255,255,255,0.04)}
+.nav-item.on{color:#F0EEE8;background:rgba(255,255,255,0.09);border-left:2px solid #5B9BD5}
+.main{overflow-y:auto;height:100vh}
+.main-inner{padding:28px 32px 60px;max-width:900px}
+.page-hdr{margin-bottom:22px}
+.page-tag{display:inline-flex;align-items:center;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--success);background:var(--success-bg);padding:3px 10px;border-radius:20px;margin-bottom:8px}
+.page-title{font-size:22px;font-weight:600;letter-spacing:-.03em;color:var(--text);line-height:1.2}
+.page-sub{font-size:12.5px;color:var(--text2);margin-top:5px;line-height:1.6;max-width:560px}
+.section{margin-bottom:32px}
+.stitle{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.stitle::after{content:'';flex:1;height:0.5px;background:var(--border)}
+.code{background:#12110C;border-radius:var(--r);padding:13px 15px;font-family:var(--mono);font-size:10.5px;line-height:1.75;color:#C8C6BE;overflow-x:auto;white-space:pre;margin-bottom:10px;position:relative;border:0.5px solid rgba(255,255,255,0.06)}
+.kw{color:#89A4CE}.str{color:#7EC89A}.cm{color:#4A4940;font-style:italic}.fn{color:#E6A84A}.ty{color:#C48FD4}.op{color:#89A4CE}
+.copy-btn{position:absolute;top:8px;right:8px;font-size:10px;padding:3px 8px;border-radius:4px;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.12);color:#8C8B82;cursor:pointer;font-family:var(--sans);transition:all .1s}
+.copy-btn:hover{background:rgba(255,255,255,0.14);color:#C8C6BE}
+.card{background:#fff;border:0.5px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:10px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:500;white-space:nowrap}
+.b-blue{background:var(--accent-bg);color:var(--accent-text)}.b-green{background:var(--success-bg);color:var(--success-text)}
+.b-warn{background:var(--warn-bg);color:var(--warn-text)}.b-danger{background:var(--danger-bg);color:var(--danger-text)}
+.b-amber{background:var(--amber-bg);color:var(--amber-text)}.b-gray{background:var(--bg3);color:var(--text2)}
+.tbl{width:100%;border-collapse:collapse;font-size:11.5px}
+.tbl th{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);padding:7px 10px;border-bottom:0.5px solid var(--border);text-align:left;background:var(--bg2)}
+.tbl td{padding:8px 10px;border-bottom:0.5px solid var(--border);vertical-align:top;color:var(--text);line-height:1.5}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--bg2)}
+.tbl code{font-family:var(--mono);font-size:10px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--accent)}
+.info-row{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border:0.5px solid var(--border);border-radius:var(--r);background:#fff;margin-bottom:7px;font-size:12px}
+.info-tag{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:1px}
+.metric-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.metric{background:var(--bg2);border-radius:var(--r);padding:10px 12px;border:0.5px solid var(--border)}
+.metric-lbl{font-size:11px;color:var(--text3);margin-bottom:3px}
+.metric-val{font-size:18px;font-weight:600;color:var(--text);font-family:var(--mono)}
+.metric-sub{font-size:10px;color:var(--text3);margin-top:2px}
+.table-card{background:#fff;border:0.5px solid var(--border);border-radius:var(--rl);margin-bottom:12px;overflow:hidden}
+.table-card-hdr{background:var(--bg2);padding:10px 14px;display:flex;align-items:center;gap:10px;border-bottom:0.5px solid var(--border)}
+.table-name{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--accent)}
+.table-desc{font-size:11px;color:var(--text2)}
+.col-row{display:grid;grid-template-columns:150px 110px 1fr;gap:8px;padding:7px 14px;border-bottom:0.5px solid var(--border);font-size:11.5px;align-items:start}
+.col-row:last-child{border-bottom:none}
+.col-row:hover{background:var(--bg2)}
+.col-name{font-family:var(--mono);font-size:11px;color:var(--text);font-weight:500}
+.col-type{font-family:var(--mono);font-size:10px;color:var(--accent)}
+.col-desc{font-size:11px;color:var(--text2)}
+.pk-badge{background:var(--amber-bg);color:var(--amber-text);font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;margin-left:4px}
+.fk-badge{background:var(--accent-bg);color:var(--accent-text);font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;margin-left:4px}
+.idx-badge{background:var(--bg3);color:var(--text2);font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;margin-left:4px}
+.nn-badge{background:var(--danger-bg);color:var(--danger-text);font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="mark">SaaS School</div>
+    <div class="name">Database Deep Dive</div>
+  </div>
+  <nav>
+    <div class="nav-section">
+      <div class="nav-label">Schema</div>
+      <button class="nav-item on" onclick="show('overview',this)">Overview & Multi-tenant</button>
+      <button class="nav-item" onclick="show('core-tables',this)">Core Tables</button>
+      <button class="nav-item" onclick="show('integration-tables',this)">Integration Tables</button>
+      <button class="nav-item" onclick="show('sync-tables',this)">Sync Job Tables</button>
+      <button class="nav-item" onclick="show('audit-table',this)">Audit Event (Partitioned)</button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">SQL</div>
+      <button class="nav-item" onclick="show('ddl-core',this)">DDL Core Tables</button>
+      <button class="nav-item" onclick="show('ddl-sync',this)">DDL Sync + DLQ</button>
+      <button class="nav-item" onclick="show('ddl-audit',this)">DDL Audit + Partition</button>
+      <button class="nav-item" onclick="show('rls',this)">RLS Policies</button>
+      <button class="nav-item" onclick="show('indexes',this)">Indexes</button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Queries</div>
+      <button class="nav-item" onclick="show('queries',this)">Key Queries</button>
+      <button class="nav-item" onclick="show('upsert',this)">Upsert Patterns</button>
+      <button class="nav-item" onclick="show('migrations',this)">Migrations (Alembic)</button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Ops</div>
+      <button class="nav-item" onclick="show('retention',this)">Retensi & Archiving</button>
+      <button class="nav-item" onclick="show('backup',this)">Backup & PITR</button>
+      <button class="nav-item" onclick="show('pooling',this)">Connection Pooling</button>
+    </div>
+  </nav>
+</aside>
+
+<main class="main">
+<div class="main-inner">
+
+<!-- ═══ OVERVIEW ═══ -->
+<section id="s-overview" style="display:block">
+<div class="page-hdr">
+  <div class="page-tag">Modul 3 — Database</div>
+  <div class="page-title">PostgreSQL — Schema & Multi-tenant</div>
+  <div class="page-sub">Semua tabel bisnis memiliki school_id. Isolasi via RLS + app-level filter. Partisi audit_event per bulan.</div>
+</div>
+
+<div class="metric-row">
+  <div class="metric"><div class="metric-lbl">Tabel bisnis</div><div class="metric-val">14</div><div class="metric-sub">semua punya school_id</div></div>
+  <div class="metric"><div class="metric-lbl">Partisi audit</div><div class="metric-val">12/yr</div><div class="metric-sub">range by month</div></div>
+  <div class="metric"><div class="metric-lbl">RLS policies</div><div class="metric-val">8</div><div class="metric-sub">per tabel bisnis</div></div>
+  <div class="metric"><div class="metric-lbl">Target RPO</div><div class="metric-val">&lt;5m</div><div class="metric-sub">WAL + PITR</div></div>
+</div>
+
+<div class="stitle">Multi-tenant Strategy</div>
+<div class="g2">
+  <div class="info-row" style="flex-direction:column;gap:6px">
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="info-tag b-green">Layer 1</span>
+      <strong style="font-size:12px">PostgreSQL RLS</strong>
+    </div>
+    <span style="font-size:11.5px;color:var(--text2)">Setiap query otomatis difilter oleh policy database. Bahkan jika app lupa WHERE school_id, RLS memblokir akses lintas tenant.</span>
+  </div>
+  <div class="info-row" style="flex-direction:column;gap:6px">
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="info-tag b-blue">Layer 2</span>
+      <strong style="font-size:12px">App-level Filter</strong>
+    </div>
+    <span style="font-size:11.5px;color:var(--text2)">Middleware ORM inject WHERE school_id=? ke setiap query. Defense-in-depth — jika RLS dimatikan sementara, app masih aman.</span>
+  </div>
+  <div class="info-row" style="flex-direction:column;gap:6px">
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="info-tag b-amber">Layer 3</span>
+      <strong style="font-size:12px">JWT Validation</strong>
+    </div>
+    <span style="font-size:11.5px;color:var(--text2)">school_id dari JWT divalidasi di middleware sebelum request masuk ke router. Tidak bisa dimanipulasi dari frontend.</span>
+  </div>
+  <div class="info-row" style="flex-direction:column;gap:6px">
+    <div style="display:flex;gap:8px;align-items:center">
+      <span class="info-tag b-warn">Optional</span>
+      <strong style="font-size:12px">PII Encryption</strong>
+    </div>
+    <span style="font-size:11.5px;color:var(--text2)">Kolom sensitif (NIK, nomor HP) dienkripsi via pgcrypto. Key di Vault / K8s Secret. Decrypt hanya di application layer.</span>
+  </div>
+</div>
+
+<div class="stitle">Entity Relationship — High Level</div>
+<div class="code"><span class="cm">-- Hubungan antar entitas utama</span>
+school (1) ──→ (N) user_school_role
+school (1) ──→ (N) integration_connection
+school (1) ──→ (N) sync_job
+school (1) ──→ (N) audit_event
+
+integration_connection (1) ──→ (N) integration_object_map
+integration_object_map (1) ──→ (N) integration_field_map
+
+sync_job (1) ──→ (N) sync_job_run
+sync_job_run (1) ──→ (N) sync_job_dlq  <span class="cm">-- jika gagal</span>
+
+user_account (N) ──→ (M) school   <span class="cm">-- via user_school_role</span>
+user_account (N) ──→ (M) role     <span class="cm">-- via user_school_role</span></div>
+</section>
+
+<!-- ═══ CORE TABLES ═══ -->
+<section id="s-core-tables" style="display:none">
+<div class="page-hdr"><div class="page-title">Core Tables</div></div>
+
+<div class="table-card">
+  <div class="table-card-hdr"><span class="table-name">school</span><span class="table-desc">— Tenant utama. Setiap sekolah = 1 tenant.</span></div>
+  <div class="col-row"><span class="col-name">id<span class="pk-badge">PK</span></span><span class="col-type">uuid</span><span class="col-desc">Primary key, gen_random_uuid()</span></div>
+  <div class="col-row"><span class="col-name">name<span class="nn-badge">NN</span></span><span class="col-type">varchar(200)</span><span class="col-desc">Nama resmi sekolah</span></div>
+  <div class="col-row"><span class="col-name">domain<span class="nn-badge">NN</span></span><span class="col-type">varchar(255)</span><span class="col-desc">Email domain atau subdomain unik. UNIQUE.</span></div>
+  <div class="col-row"><span class="col-name">npsn</span><span class="col-type">varchar(8)</span><span class="col-desc">Nomor Pokok Sekolah Nasional. UNIQUE nullable.</span></div>
+  <div class="col-row"><span class="col-name">status<span class="nn-badge">NN</span></span><span class="col-type">varchar(20)</span><span class="col-desc">CHECK: onboarding | active | suspended | isolated. Default: onboarding.</span></div>
+  <div class="col-row"><span class="col-name">plan</span><span class="col-type">varchar(20)</span><span class="col-desc">starter | pro | enterprise. Default: starter.</span></div>
+  <div class="col-row"><span class="col-name">settings</span><span class="col-type">jsonb</span><span class="col-desc">Config sekolah (timezone, bahasa, logo_url). Default: {}</span></div>
+  <div class="col-row"><span class="col-name">isolated_at</span><span class="col-type">timestamptz</span><span class="col-desc">Timestamp saat diisolasi. NULL jika aktif.</span></div>
+  <div class="col-row"><span class="col-name">created_at<span class="nn-badge">NN</span></span><span class="col-type">timestamptz</span><span class="col-desc">Default: now()</span></div>
+  <div class="col-row"><span class="col-name">updated_at</span><span class="col-type">timestamptz</span><span class="col-desc">Auto-update via trigger.</span></div>
+</div>
+
+<div class="table-card">
+  <div class="table-card-hdr"><span class="table-name">user_account</span><span class="table-desc">— Akun pengguna. Bisa punya role di banyak sekolah.</span></div>
+  <div class="col-row"><span class="col-name">id<span class="pk-badge">PK</span></span><span class="col-type">uuid</span><span class="col-desc">gen_random_uuid()</span></div>
+  <div class="col-row"><span class="col-name">email<span class="nn-badge">NN</span></span><span class="col-type">varchar(320)</span><span class="col-desc">UNIQUE. Lowercase. Index: btree.</span></div>
+  <div class="col-row"><span class="col-name">name<span class="nn-badge">NN</span></span><span class="col-type">varchar(200)</span><span class="col-desc">Nama lengkap.</span></div>
+  <div class="col-row"><span class="col-name">password_hash</span><span class="col-type">varchar(255)</span><span class="col-desc">Argon2id hash. NULL jika OIDC-only login.</span></div>
+  <div class="col-row"><span class="col-name">status<span class="nn-badge">NN</span></span><span class="col-type">varchar(20)</span><span class="col-desc">CHECK: active | suspended | deleted. Default: active.</span></div>
+  <div class="col-row"><span class="col-name">oidc_sub</span><span class="col-type">varchar(255)</span><span class="col-desc">Subject dari OIDC provider. UNIQUE nullable.</span></div>
+  <div class="col-row"><span class="col-name">last_login_at</span><span class="col-type">timestamptz</span><span class="col-desc">Diupdate setiap login sukses.</span></div>
+  <div class="col-row"><span class="col-name">created_at<span class="nn-badge">NN</span></span><span class="col-type">timestamptz</span><span class="col-desc">Default: now()</span></div>
+</div>
+
+<div class="table-card">
+  <div class="table-card-hdr"><span class="table-name">user_school_role</span><span class="table-desc">— Many-to-many user ↔ school dengan role.</span></div>
+  <div class="col-row"><span class="col-name">user_id<span class="pk-badge">PK</span><span class="fk-badge">FK</span></span><span class="col-type">uuid</span><span class="col-desc">REFERENCES user_account(id)</span></div>
+  <div class="col-row"><span class="col-name">school_id<span class="pk-badge">PK</span><span class="fk-badge">FK</span></span><span class="col-type">uuid</span><span class="col-desc">REFERENCES school(id). PRIMARY KEY (user_id, school_id).</span></div>
+  <div class="col-row"><span class="col-name">role<span class="nn-badge">NN</span></span><span class="col-type">varchar(30)</span><span class="col-desc">CHECK: admin | pembuat_soal | pengawas</span></div>
+  <div class="col-row"><span class="col-name">assigned_by<span class="fk-badge">FK</span></span><span class="col-type">uuid</span><span class="col-desc">REFERENCES user_account(id). Admin yang assign.</span></div>
+  <div class="col-row"><span class="col-name">assigned_at<span class="nn-badge">NN</span></span><span class="col-type">timestamptz</span><span class="col-desc">Default: now()</span></div>
+</div>
+</section>
+
+<!-- ═══ INTEGRATION TABLES ═══ -->
+<section id="s-integration-tables" style="display:none">
+<div class="page-hdr"><div class="page-title">Integration Tables</div></div>
+
+<div class="table-card">
+  <div class="table-card-hdr"><span class="table-name">integration_connection</span><span class="table-desc">— Konfigurasi koneksi ke SIS vendor.</span></div>
+  <div class="col-row"><span class="col-name">id<span class="pk-badge">PK</span></span><span class="col-type">uuid</span><span class="col-desc">gen_random_uuid()</span></div>
+  <div class="col-row"><span class="col-name">school_id<span class="nn-badge">NN</span><span class="fk-badge">FK</span><span class="idx-badge">IDX</span></span><span class="col-type">uuid</span><span class="col-desc">REFERENCES school(id). RLS filter.</span></div>
+  <div class="col-row"><span class="col-name">provider<span class="nn-badge">NN</span></span><span class="col-type">varchar(50)</span><span class="col-desc">CHECK: vendor_a | vendor_b | custom_rest | csv_sftp</span></div>
+  <div class="col-row"><span class="col-name">name</span><span class="col-type">varchar(100)</span><span class="col-desc">Nama deskriptif. e.g. "DAPODIK Utama"</span></div>
+  <div class="col-row"><span class="col-name">credentials_enc<span class="nn-badge">NN</span></span><span class="col-type">jsonb</span><span class="col-desc">Dienkripsi pgcrypto. Berisi {api_key, base_url, ...}</span></div>
+  <div class="col-row"><span class="col-name">config</span><span class="col-type">jsonb</span><span class="col-desc">Config non-sensitif. {timeout_s, batch_size, ...}</span></div>
+  <div class="col-row"><span class="col-name">status<span class="nn-badge">NN</span></span><span class="col-type">varchar(20)</span><span class="col-desc">CHECK: pending | active | error | disabled</span></div>
+  <div class="col-row"><span class="col-name">last_tested_at</span><span class="col-type">timestamptz</span><span class="col-desc">Timestamp terakhir test koneksi berhasil.</span></div>
+  <div class="col-row"><span class="col-name">last_error</span><span class="col-type">text</span><span class="col-desc">Error message dari test/sync terakhir. NULL jika ok.</span></div>
+  <div class="col-row"><span class="col-name">created_at<span class="nn-badge">NN</span></span><span class="col-type">timestamptz</span><span class="col-desc">Default: now()</span></div>
+</div>
+
+<div class="table-card">
+  <div class="table-card-hdr"><span class="table-name">integration_object_map</span><span class="table-desc">— Pemetaan object type antara vendor dan internal.</span></div>
+  <div class="col-row"><span class="col-name">id<span class="pk-badge">PK</span></span><span class="col-type">uuid</span><span class="col-desc">gen_random_uuid()</span></div>
+  <div class="col-row"><span class="col-name">connection_id<span class="nn-badge">NN</span><span class="fk-badge">FK</span><span class="idx-badge">IDX</span></span><span class="col-type">uuid</span><span class="col-desc">REFERENCES integration_connection(id) ON DELETE CASCADE</span></div>
+  <div class="col-row"><span class="col-name">school_id<span class="nn-badge">NN</span><span class="fk-badge">FK</span><span class="idx-badge">IDX</span></span><span class="col-type">uuid</span><span class="col-desc">Denormalized untuk RLS. REFERENCES school(id)</span></div>
+  <div class="col-row"><span class="col-name">source_object<span class="nn-badge">NN</span></span><span class="col-type">varchar(100)</span><span class="col-desc">Nama object dari vendor. e.g. "PESERTA_DIDIK"</span></div>
+  <div class="col-row"><span class="col-name">target_object<span class="nn-badge">NN</span></span><span class="col-type">varchar(100)</span><span class="col-desc">Nama object internal. e.g. "siswa"</span></div>
+  <div class="col-row"><span class="col-name">sync_direction</span><span class="col-type">varchar(10)</span><span class="col-desc">CHECK: inbound | outbound | bidirectional. Default: inbound.</span></div>
+  <div class="col-row"><span class="col-name">is_active</span><span class="col-type">boolean</span><span class="col-desc">Default: true. Flag non-destructive untuk disable mapping.</span></div>
+</div>
+
+<div class="table-card">
+  <div class="table-card-hdr"><span class="table-name">integration_field_map</span><span class="table-desc">— Pemetaan field level. Satu baris = satu field mapping.</span></div>
+  <div class="col-row"><span class="col-name">id<span class="pk-badge">PK</span></span><span class="col-type">uuid</span><span class="col-desc">gen_random_uuid()</span></div>
+  <div class="col-row"><span class="col-name">object_map_id<span class="nn-badge">NN</span><span class="fk-badge">FK</span></span><span class="col-type">uuid</span><span class="col-desc">REFERENCES integration_object_map(id) ON DELETE CASCADE</span></div>
+  <div class="col-row"><span class="col-name">school_id<span class="nn-badge">NN</span><span class="fk-badge">FK</span><span class="idx-badge">IDX</span></span><span class="col-type">uuid</span><span class="col-desc">Denormalized untuk RLS.</span></div>
+  <div class="col-row"><span class="col-name">source_field<span class="nn-badge">NN</span></span><span class="col-type">varchar(150)</span><span class="col-desc">Nama field dari vendor. e.g. "nm_pd"</span></div>
+  <div class="col-row"><span class="col-name">target_field<span class="nn-badge">NN</span></span><span class="col-type">varchar(150)</span><span class="col-desc">Nama field internal. e.g. "nama_lengkap"</span></div>
+  <div class="col-row"><span class="col-name">transform_fn</span><span class="col-type">text</span><span class="col-desc">Ekspresi transform opsional. e.g. "UPPER(value)"</span></div>
+  <div class="col-row"><span class="col-name">is_required</span><span class="col-type">boolean</span><span class="col-desc">Default: false. Jika true, sync gagal jika field kosong.</span></div>
+  <div class="col-row"><span class="col-name">sample_value</span><span class="col-type">text</span><span class="col-desc">Nilai sampel dari last sync untuk preview di UI.</span></div>
+  <div class="col-row"><span class="col-name">UNIQUE</span><span class="col-type">constraint</span><span class="col-desc">(object_map_id, school_id, source_field) — untuk upsert idempotent</span></div>
+</div>
+</section>
+
+<!-- ═══ SYNC TABLES ═══ -->
+<section id="s-sync-tables" style="display:none">
+<div class="page-hdr"><div class="page-title">Sync Job Tables</div></div>
+
+<div class="table-card">
+  <div class="table-card-hdr"><span class="table-name">sync_job</span><span class="table-desc">— Definisi pekerjaan sync (bisa terjadwal atau manual).</span></div>
+  <div class="col-row"><span class="col-name">id<span class="pk-badge">PK</span></span><span class="col-type">uuid</span><span class="col-desc">gen_random_uuid()</span></div>
+  <div class="col-row"><span class="col-name">school_id<span class="nn-badge">NN</span><span class="fk-badge">FK</span><span class="idx-badge">IDX</span></span><span class="col-type">uuid</span><span class="col-desc">REFERENCES school(id). RLS.</span></div>
+  <div class="col-row"><span class="col-name">connection_id<span class="nn-badge">NN</span><span class="fk-badge">FK</span></span><span class="col-type">uuid</span><span class="col-desc">REFERENCES integration_connection(id)</span></div>
+  <div class="col-row"><span class="col-name">name<span class="nn-badge">NN</span></span><span class="col-type">varchar(200)</span><span class="col-desc">Nama deskriptif. e.g. "Sync Siswa Harian"</span></div>
+  <div class="col-row"><span class="col-name">schedule_cron</span><span class="col-type">varchar(50)</span><span class="col-desc">Cron expression. NULL = manual only. e.g. "0 2 * * *"</span></div>
+  <div class="col-row"><span class="col-name">status<span class="nn-badge">NN</span></span><span class="col-type">varchar(20)</span><span class="col-desc">CHECK: active | paused | deleted. Default: active.</span></div>
+  <div class="col-row"><span class="col-name">config</span><span class="col-type">jsonb</span><span class="col-desc">Config runtime: {batch_size, full_sync, object_types[]}</span></div>
+  <div class="col-row"><span class="col-name">last_run_at</span><span class="col-type">timestamptz</span><span class="col-desc">Timestamp run terakhir selesai (success atau failed).</span></div>
+  <div class="col-row"><span class="col-name">next_run_at<span class="idx-badge">IDX</span></span><span class="col-type">timestamptz</span><span class="col-desc">Dihitung dari schedule_cron. Index untuk scheduler query.</span></div>
+</div>
+
+<div class="table-card">
+  <div class="table-card-hdr"><span class="table-name">sync_job_run</span><span class="table-desc">— Setiap eksekusi = 1 baris. Status terupdate selama eksekusi.</span></div>
+  <div class="col-row"><span class="col-name">id<span class="pk-badge">PK</span></span><span class="col-type">uuid</span><span class="col-desc">gen_random_uuid()</span></div>
+  <div class="col-row"><span class="col-name">job_id<span class="nn-badge">NN</span><span class="fk-badge">FK</span><span class="idx-badge">IDX</span></span><span class="col-type">uuid</span><span class="col-desc">REFERENCES sync_job(id) ON DELETE CASCADE</span></div>
+  <div class="col-row"><span class="col-name">school_id<span class="nn-badge">NN</span><span class="fk-badge">FK</span><span class="idx-badge">IDX</span></span><span class="col-type">uuid</span><span class="col-desc">Denormalized untuk RLS + query cepat.</span></div>
+  <div class="col-row"><span class="col-name">status<span class="nn-badge">NN</span></span><span class="col-type">varchar(20)</span><span class="col-desc">CHECK: queued | running | done | failed | cancelled</span></div>
+  <div class="col-row"><span class="col-name">triggered_by</span><span class="col-type">varchar(30)</span><span class="col-desc">scheduler | manual | api. Default: scheduler.</span></div>
+  <div class="col-row"><span class="col-name">records_synced</span><span class="col-type">integer</span><span class="col-desc">Jumlah record berhasil diproses. Default: 0.</span></div>
+  <div class="col-row"><span class="col-name">records_failed</span><span class="col-type">integer</span><span class="col-desc">Jumlah record gagal diproses. Default: 0.</span></div>
+  <div class="col-row"><span class="col-name">error_message</span><span class="col-type">text</span><span class="col-desc">Error message jika status=failed. MAX 2048 karakter.</span></div>
+  <div class="col-row"><span class="col-name">duration_ms</span><span class="col-type">integer</span><span class="col-desc">Durasi eksekusi (ms). Dihitung saat selesai.</span></div>
+  <div class="col-row"><span class="col-name">started_at</span><span class="col-type">timestamptz</span><span class="col-desc">Saat worker mulai proses.</span></div>
+  <div class="col-row"><span class="col-name">finished_at</span><span class="col-type">timestamptz</span><span class="col-desc">Saat selesai (success atau fail).</span></div>
+  <div class="col-row"><span class="col-name">created_at<span class="nn-badge">NN</span></span><span class="col-type">timestamptz</span><span class="col-desc">Default: now(). Waktu job di-enqueue.</span></div>
+</div>
+
+<div class="table-card">
+  <div class="table-card-hdr"><span class="table-name">sync_job_dlq</span><span class="table-desc">— Dead-letter queue. Job yang gagal setelah max retries.</span></div>
+  <div class="col-row"><span class="col-name">id<span class="pk-badge">PK</span></span><span class="col-type">uuid</span><span class="col-desc">gen_random_uuid()</span></div>
+  <div class="col-row"><span class="col-name">run_id<span class="fk-badge">FK</span></span><span class="col-type">uuid</span><span class="col-desc">REFERENCES sync_job_run(id). NULL jika tidak ada run.</span></div>
+  <div class="col-row"><span class="col-name">job_id<span class="fk-badge">FK</span><span class="idx-badge">IDX</span></span><span class="col-type">uuid</span><span class="col-desc">REFERENCES sync_job(id)</span></div>
+  <div class="col-row"><span class="col-name">school_id<span class="nn-badge">NN</span><span class="idx-badge">IDX</span></span><span class="col-type">uuid</span><span class="col-desc">Untuk RLS dan query per tenant.</span></div>
+  <div class="col-row"><span class="col-name">payload</span><span class="col-type">jsonb</span><span class="col-desc">Payload asli job untuk re-process.</span></div>
+  <div class="col-row"><span class="col-name">error_reason</span><span class="col-type">text</span><span class="col-desc">Alasan gagal: timeout | data_corrupt | circuit_open | max_retries</span></div>
+  <div class="col-row"><span class="col-name">attempts<span class="nn-badge">NN</span></span><span class="col-type">integer</span><span class="col-desc">Berapa kali sudah dicoba. Default: 0.</span></div>
+  <div class="col-row"><span class="col-name">is_permanent</span><span class="col-type">boolean</span><span class="col-desc">Default: false. True = tidak akan di-retry otomatis.</span></div>
+  <div class="col-row"><span class="col-name">reprocessed_at</span><span class="col-type">timestamptz</span><span class="col-desc">Timestamp re-enqueue terakhir. NULL jika belum.</span></div>
+  <div class="col-row"><span class="col-name">created_at<span class="nn-badge">NN</span></span><span class="col-type">timestamptz</span><span class="col-desc">Default: now()</span></div>
+</div>
+</section>
+
+<!-- ═══ AUDIT TABLE ═══ -->
+<section id="s-audit-table" style="display:none">
+<div class="page-hdr"><div class="page-title">Audit Event — Partitioned</div></div>
+
+<div class="table-card">
+  <div class="table-card-hdr"><span class="table-name">audit_event</span><span class="table-desc">— PARTITION BY RANGE(created_at). Partisi per bulan.</span></div>
+  <div class="col-row"><span class="col-name">id<span class="pk-badge">PK</span></span><span class="col-type">uuid</span><span class="col-desc">gen_random_uuid(). PK composite dengan created_at.</span></div>
+  <div class="col-row"><span class="col-name">created_at<span class="pk-badge">PK</span><span class="nn-badge">NN</span><span class="idx-badge">IDX</span></span><span class="col-type">timestamptz</span><span class="col-desc">Kolom partisi. Default: now(). Bagian dari PK.</span></div>
+  <div class="col-row"><span class="col-name">school_id<span class="nn-badge">NN</span><span class="idx-badge">IDX</span></span><span class="col-type">uuid</span><span class="col-desc">Tenant. Index: (school_id, created_at) untuk query range.</span></div>
+  <div class="col-row"><span class="col-name">actor_id<span class="fk-badge">FK</span></span><span class="col-type">uuid</span><span class="col-desc">REFERENCES user_account(id). NULL untuk system events.</span></div>
+  <div class="col-row"><span class="col-name">event_type<span class="nn-badge">NN</span><span class="idx-badge">IDX</span></span><span class="col-type">varchar(80)</span><span class="col-desc">e.g. USER_LOGIN | ROLE_ASSIGNED | SYNC_STARTED | TENANT_ISOLATED</span></div>
+  <div class="col-row"><span class="col-name">resource_type</span><span class="col-type">varchar(50)</span><span class="col-desc">e.g. user | sync_job | integration | school</span></div>
+  <div class="col-row"><span class="col-name">resource_id</span><span class="col-type">varchar(100)</span><span class="col-desc">ID resource yang terpengaruh.</span></div>
+  <div class="col-row"><span class="col-name">metadata</span><span class="col-type">jsonb</span><span class="col-desc">Data tambahan: {old_role, new_role, ip_addr, user_agent}. PII-free.</span></div>
+  <div class="col-row"><span class="col-name">ip_address</span><span class="col-type">inet</span><span class="col-desc">IP address actor. Untuk audit trail.</span></div>
+  <div class="col-row"><span class="col-name">trace_id</span><span class="col-type">varchar(32)</span><span class="col-desc">OTel trace ID untuk korelasi dengan distributed trace.</span></div>
+</div>
+
+<div class="stitle">Partition Layout</div>
+<div class="code"><span class="cm">-- Partisi audit_event (dibuat otomatis via pg_partman atau manual)</span>
+<span class="cm">-- audit_event_y2026m01 → 2026-01-01 s/d 2026-02-01</span>
+<span class="cm">-- audit_event_y2026m02 → 2026-02-01 s/d 2026-03-01</span>
+<span class="cm">-- ... dst</span>
+
+<span class="cm">-- Query partition pruning otomatis jika ada filter created_at:</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> audit_event
+<span class="kw">WHERE</span> school_id = <span class="str">'uuid'</span>
+  <span class="kw">AND</span> created_at <span class="op">BETWEEN</span> <span class="str">'2026-01-01'</span> <span class="kw">AND</span> <span class="str">'2026-02-01'</span>;
+<span class="cm">-- → PostgreSQL hanya scan partisi Januari 2026 ✓</span>
+
+<span class="cm">-- Drop partisi lama (retensi 365 hari):</span>
+<span class="kw">DROP TABLE IF EXISTS</span> audit_event_y2025m01;  <span class="cm">-- bulan Jan 2025</span></div>
+</section>
+
+<!-- ═══ DDL CORE ═══ -->
+<section id="s-ddl-core" style="display:none">
+<div class="page-hdr"><div class="page-title">DDL — Core Tables</div></div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm">-- ══════════════════════════════════════════════
+-- EXTENSIONS
+-- ══════════════════════════════════════════════</span>
+<span class="kw">CREATE EXTENSION IF NOT EXISTS</span> <span class="str">"pgcrypto"</span>;   <span class="cm">-- uuid, enkripsi</span>
+<span class="kw">CREATE EXTENSION IF NOT EXISTS</span> <span class="str">"pg_stat_statements"</span>;  <span class="cm">-- query monitoring</span>
+
+<span class="cm">-- ══════════════════════════════════════════════
+-- HELPER: auto-update updated_at
+-- ══════════════════════════════════════════════</span>
+<span class="kw">CREATE OR REPLACE FUNCTION</span> <span class="fn">set_updated_at</span>()
+<span class="kw">RETURNS TRIGGER AS</span> $$
+<span class="kw">BEGIN</span>
+  NEW.updated_at = now();
+  <span class="kw">RETURN</span> NEW;
+<span class="kw">END</span>;
+$$ <span class="kw">LANGUAGE</span> plpgsql;
+
+<span class="cm">-- ══════════════════════════════════════════════
+-- TABLE: school
+-- ══════════════════════════════════════════════</span>
+<span class="kw">CREATE TABLE</span> school (
+  id           <span class="ty">UUID</span>         <span class="kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  name         <span class="ty">VARCHAR(200)</span> <span class="kw">NOT NULL</span>,
+  domain       <span class="ty">VARCHAR(255)</span> <span class="kw">NOT NULL UNIQUE</span>,
+  npsn         <span class="ty">VARCHAR(8)</span>   <span class="kw">UNIQUE</span>,
+  status       <span class="ty">VARCHAR(20)</span>  <span class="kw">NOT NULL DEFAULT</span> <span class="str">'onboarding'</span>
+                             <span class="kw">CHECK</span>(status <span class="kw">IN</span> (<span class="str">'onboarding'</span>,<span class="str">'active'</span>,<span class="str">'suspended'</span>,<span class="str">'isolated'</span>)),
+  plan         <span class="ty">VARCHAR(20)</span>  <span class="kw">NOT NULL DEFAULT</span> <span class="str">'starter'</span>
+                             <span class="kw">CHECK</span>(plan <span class="kw">IN</span> (<span class="str">'starter'</span>,<span class="str">'pro'</span>,<span class="str">'enterprise'</span>)),
+  settings     <span class="ty">JSONB</span>        <span class="kw">NOT NULL DEFAULT</span> <span class="str">'{}'</span>,
+  isolated_at  <span class="ty">TIMESTAMPTZ</span>,
+  created_at   <span class="ty">TIMESTAMPTZ</span>  <span class="kw">NOT NULL DEFAULT</span> now(),
+  updated_at   <span class="ty">TIMESTAMPTZ</span>
+);
+<span class="kw">CREATE TRIGGER</span> trg_school_updated_at
+  <span class="kw">BEFORE UPDATE ON</span> school
+  <span class="kw">FOR EACH ROW EXECUTE FUNCTION</span> <span class="fn">set_updated_at</span>();
+
+<span class="cm">-- ══════════════════════════════════════════════
+-- TABLE: user_account
+-- ══════════════════════════════════════════════</span>
+<span class="kw">CREATE TABLE</span> user_account (
+  id            <span class="ty">UUID</span>         <span class="kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  email         <span class="ty">VARCHAR(320)</span> <span class="kw">NOT NULL UNIQUE</span>,
+  name          <span class="ty">VARCHAR(200)</span> <span class="kw">NOT NULL</span>,
+  password_hash <span class="ty">VARCHAR(255)</span>,        <span class="cm">-- NULL jika OIDC-only</span>
+  status        <span class="ty">VARCHAR(20)</span>  <span class="kw">NOT NULL DEFAULT</span> <span class="str">'active'</span>
+                              <span class="kw">CHECK</span>(status <span class="kw">IN</span> (<span class="str">'active'</span>,<span class="str">'suspended'</span>,<span class="str">'deleted'</span>)),
+  oidc_sub      <span class="ty">VARCHAR(255)</span> <span class="kw">UNIQUE</span>,
+  last_login_at <span class="ty">TIMESTAMPTZ</span>,
+  created_at    <span class="ty">TIMESTAMPTZ</span>  <span class="kw">NOT NULL DEFAULT</span> now(),
+  updated_at    <span class="ty">TIMESTAMPTZ</span>
+);
+<span class="kw">CREATE INDEX</span> idx_user_account_email <span class="kw">ON</span> user_account (lower(email));
+
+<span class="cm">-- ══════════════════════════════════════════════
+-- TABLE: user_school_role
+-- ══════════════════════════════════════════════</span>
+<span class="kw">CREATE TABLE</span> user_school_role (
+  user_id     <span class="ty">UUID</span>        <span class="kw">NOT NULL REFERENCES</span> user_account(id) <span class="kw">ON DELETE CASCADE</span>,
+  school_id   <span class="ty">UUID</span>        <span class="kw">NOT NULL REFERENCES</span> school(id)        <span class="kw">ON DELETE CASCADE</span>,
+  role        <span class="ty">VARCHAR(30)</span> <span class="kw">NOT NULL</span>
+              <span class="kw">CHECK</span>(role <span class="kw">IN</span> (<span class="str">'admin'</span>,<span class="str">'pembuat_soal'</span>,<span class="str">'pengawas'</span>)),
+  assigned_by <span class="ty">UUID</span>        <span class="kw">REFERENCES</span> user_account(id),
+  assigned_at <span class="ty">TIMESTAMPTZ</span> <span class="kw">NOT NULL DEFAULT</span> now(),
+  <span class="kw">PRIMARY KEY</span> (user_id, school_id)
+);
+<span class="kw">CREATE INDEX</span> idx_usr_school_role ON user_school_role (school_id, role);</div>
+</section>
+
+<!-- ═══ DDL SYNC ═══ -->
+<section id="s-ddl-sync" style="display:none">
+<div class="page-hdr"><div class="page-title">DDL — Sync + Integration Tables</div></div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm">-- ══════════════════════════════════════════════
+-- TABLE: integration_connection
+-- ══════════════════════════════════════════════</span>
+<span class="kw">CREATE TABLE</span> integration_connection (
+  id               <span class="ty">UUID</span>        <span class="kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  school_id        <span class="ty">UUID</span>        <span class="kw">NOT NULL REFERENCES</span> school(id) <span class="kw">ON DELETE CASCADE</span>,
+  provider         <span class="ty">VARCHAR(50)</span> <span class="kw">NOT NULL</span>
+                   <span class="kw">CHECK</span>(provider <span class="kw">IN</span> (<span class="str">'vendor_a'</span>,<span class="str">'vendor_b'</span>,<span class="str">'custom_rest'</span>,<span class="str">'csv_sftp'</span>)),
+  name             <span class="ty">VARCHAR(100)</span>,
+  credentials_enc  <span class="ty">JSONB</span>       <span class="kw">NOT NULL DEFAULT</span> <span class="str">'{}'</span>,  <span class="cm">-- enkripsi pgcrypto</span>
+  config           <span class="ty">JSONB</span>       <span class="kw">NOT NULL DEFAULT</span> <span class="str">'{}'</span>,
+  status           <span class="ty">VARCHAR(20)</span> <span class="kw">NOT NULL DEFAULT</span> <span class="str">'pending'</span>
+                   <span class="kw">CHECK</span>(status <span class="kw">IN</span> (<span class="str">'pending'</span>,<span class="str">'active'</span>,<span class="str">'error'</span>,<span class="str">'disabled'</span>)),
+  last_tested_at   <span class="ty">TIMESTAMPTZ</span>,
+  last_error       <span class="ty">TEXT</span>,
+  created_at       <span class="ty">TIMESTAMPTZ</span> <span class="kw">NOT NULL DEFAULT</span> now(),
+  updated_at       <span class="ty">TIMESTAMPTZ</span>
+);
+<span class="kw">CREATE INDEX</span> idx_int_conn_school <span class="kw">ON</span> integration_connection (school_id, status);
+
+<span class="cm">-- ══════════════════════════════════════════════
+-- TABLE: integration_field_map
+-- ══════════════════════════════════════════════</span>
+<span class="kw">CREATE TABLE</span> integration_field_map (
+  id             <span class="ty">UUID</span>         <span class="kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  object_map_id  <span class="ty">UUID</span>         <span class="kw">NOT NULL REFERENCES</span> integration_object_map(id) <span class="kw">ON DELETE CASCADE</span>,
+  school_id      <span class="ty">UUID</span>         <span class="kw">NOT NULL REFERENCES</span> school(id),
+  source_field   <span class="ty">VARCHAR(150)</span> <span class="kw">NOT NULL</span>,
+  target_field   <span class="ty">VARCHAR(150)</span> <span class="kw">NOT NULL</span>,
+  transform_fn   <span class="ty">TEXT</span>,
+  is_required    <span class="ty">BOOLEAN</span>      <span class="kw">NOT NULL DEFAULT</span> <span class="kw">false</span>,
+  sample_value   <span class="ty">TEXT</span>,
+  created_at     <span class="ty">TIMESTAMPTZ</span>  <span class="kw">NOT NULL DEFAULT</span> now(),
+  updated_at     <span class="ty">TIMESTAMPTZ</span>,
+  <span class="kw">UNIQUE</span>(object_map_id, school_id, source_field)  <span class="cm">-- kunci upsert idempotent</span>
+);
+
+<span class="cm">-- ══════════════════════════════════════════════
+-- TABLE: sync_job
+-- ══════════════════════════════════════════════</span>
+<span class="kw">CREATE TABLE</span> sync_job (
+  id            <span class="ty">UUID</span>        <span class="kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  school_id     <span class="ty">UUID</span>        <span class="kw">NOT NULL REFERENCES</span> school(id) <span class="kw">ON DELETE CASCADE</span>,
+  connection_id <span class="ty">UUID</span>        <span class="kw">NOT NULL REFERENCES</span> integration_connection(id),
+  name          <span class="ty">VARCHAR(200)</span> <span class="kw">NOT NULL</span>,
+  schedule_cron <span class="ty">VARCHAR(50)</span>,
+  status        <span class="ty">VARCHAR(20)</span> <span class="kw">NOT NULL DEFAULT</span> <span class="str">'active'</span>
+                <span class="kw">CHECK</span>(status <span class="kw">IN</span> (<span class="str">'active'</span>,<span class="str">'paused'</span>,<span class="str">'deleted'</span>)),
+  config        <span class="ty">JSONB</span>       <span class="kw">NOT NULL DEFAULT</span> <span class="str">'{}'</span>,
+  last_run_at   <span class="ty">TIMESTAMPTZ</span>,
+  next_run_at   <span class="ty">TIMESTAMPTZ</span>,
+  created_at    <span class="ty">TIMESTAMPTZ</span> <span class="kw">NOT NULL DEFAULT</span> now()
+);
+<span class="kw">CREATE INDEX</span> idx_sync_job_school  <span class="kw">ON</span> sync_job (school_id, status);
+<span class="kw">CREATE INDEX</span> idx_sync_job_sched   <span class="kw">ON</span> sync_job (next_run_at) <span class="kw">WHERE</span> status = <span class="str">'active'</span>;
+
+<span class="cm">-- ══════════════════════════════════════════════
+-- TABLE: sync_job_run
+-- ══════════════════════════════════════════════</span>
+<span class="kw">CREATE TABLE</span> sync_job_run (
+  id              <span class="ty">UUID</span>        <span class="kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  job_id          <span class="ty">UUID</span>        <span class="kw">NOT NULL REFERENCES</span> sync_job(id) <span class="kw">ON DELETE CASCADE</span>,
+  school_id       <span class="ty">UUID</span>        <span class="kw">NOT NULL REFERENCES</span> school(id),
+  status          <span class="ty">VARCHAR(20)</span> <span class="kw">NOT NULL DEFAULT</span> <span class="str">'queued'</span>
+                  <span class="kw">CHECK</span>(status <span class="kw">IN</span> (<span class="str">'queued'</span>,<span class="str">'running'</span>,<span class="str">'done'</span>,<span class="str">'failed'</span>,<span class="str">'cancelled'</span>)),
+  triggered_by    <span class="ty">VARCHAR(30)</span> <span class="kw">DEFAULT</span> <span class="str">'scheduler'</span>,
+  records_synced  <span class="ty">INTEGER</span>     <span class="kw">NOT NULL DEFAULT</span> 0,
+  records_failed  <span class="ty">INTEGER</span>     <span class="kw">NOT NULL DEFAULT</span> 0,
+  error_message   <span class="ty">TEXT</span>,
+  duration_ms     <span class="ty">INTEGER</span>,
+  started_at      <span class="ty">TIMESTAMPTZ</span>,
+  finished_at     <span class="ty">TIMESTAMPTZ</span>,
+  created_at      <span class="ty">TIMESTAMPTZ</span> <span class="kw">NOT NULL DEFAULT</span> now()
+);
+<span class="kw">CREATE INDEX</span> idx_run_job_school <span class="kw">ON</span> sync_job_run (school_id, job_id, created_at <span class="kw">DESC</span>);
+<span class="kw">CREATE INDEX</span> idx_run_queued     <span class="kw">ON</span> sync_job_run (status, created_at) <span class="kw">WHERE</span> status = <span class="str">'queued'</span>;
+
+<span class="cm">-- ══════════════════════════════════════════════
+-- TABLE: sync_job_dlq
+-- ══════════════════════════════════════════════</span>
+<span class="kw">CREATE TABLE</span> sync_job_dlq (
+  id             <span class="ty">UUID</span>        <span class="kw">PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+  run_id         <span class="ty">UUID</span>        <span class="kw">REFERENCES</span> sync_job_run(id),
+  job_id         <span class="ty">UUID</span>        <span class="kw">REFERENCES</span> sync_job(id),
+  school_id      <span class="ty">UUID</span>        <span class="kw">NOT NULL</span>,
+  payload        <span class="ty">JSONB</span>       <span class="kw">NOT NULL DEFAULT</span> <span class="str">'{}'</span>,
+  error_reason   <span class="ty">TEXT</span>,
+  attempts       <span class="ty">INTEGER</span>     <span class="kw">NOT NULL DEFAULT</span> 0,
+  is_permanent   <span class="ty">BOOLEAN</span>     <span class="kw">NOT NULL DEFAULT</span> false,
+  reprocessed_at <span class="ty">TIMESTAMPTZ</span>,
+  created_at     <span class="ty">TIMESTAMPTZ</span> <span class="kw">NOT NULL DEFAULT</span> now()
+);
+<span class="kw">CREATE INDEX</span> idx_dlq_school <span class="kw">ON</span> sync_job_dlq (school_id, created_at <span class="kw">DESC</span>);</div>
+</section>
+
+<!-- ═══ DDL AUDIT ═══ -->
+<section id="s-ddl-audit" style="display:none">
+<div class="page-hdr"><div class="page-title">DDL — Audit Event + Partitioning</div></div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm">-- ══════════════════════════════════════════════
+-- TABLE: audit_event (PARTITIONED BY RANGE)
+-- ══════════════════════════════════════════════</span>
+<span class="kw">CREATE TABLE</span> audit_event (
+  id            <span class="ty">UUID</span>         <span class="kw">NOT NULL DEFAULT</span> gen_random_uuid(),
+  created_at    <span class="ty">TIMESTAMPTZ</span>  <span class="kw">NOT NULL DEFAULT</span> now(),  <span class="cm">-- kolom partisi</span>
+  school_id     <span class="ty">UUID</span>         <span class="kw">NOT NULL</span>,
+  actor_id      <span class="ty">UUID</span>         <span class="kw">REFERENCES</span> user_account(id),
+  event_type    <span class="ty">VARCHAR(80)</span>  <span class="kw">NOT NULL</span>,
+  resource_type <span class="ty">VARCHAR(50)</span>,
+  resource_id   <span class="ty">VARCHAR(100)</span>,
+  metadata      <span class="ty">JSONB</span>        <span class="kw">NOT NULL DEFAULT</span> <span class="str">'{}'</span>,
+  ip_address    <span class="ty">INET</span>,
+  trace_id      <span class="ty">VARCHAR(32)</span>,
+  <span class="kw">PRIMARY KEY</span> (id, created_at)    <span class="cm">-- created_at WAJIB ada di PK untuk partisi</span>
+) <span class="kw">PARTITION BY RANGE</span> (created_at);
+
+<span class="cm">-- Buat partisi untuk 12 bulan ke depan</span>
+<span class="cm">-- (Bisa diotomasi via pg_partman)</span>
+<span class="kw">CREATE TABLE</span> audit_event_y2026m01
+  <span class="kw">PARTITION OF</span> audit_event
+  <span class="kw">FOR VALUES FROM</span> (<span class="str">'2026-01-01'</span>) <span class="kw">TO</span> (<span class="str">'2026-02-01'</span>);
+
+<span class="kw">CREATE TABLE</span> audit_event_y2026m02
+  <span class="kw">PARTITION OF</span> audit_event
+  <span class="kw">FOR VALUES FROM</span> (<span class="str">'2026-02-01'</span>) <span class="kw">TO</span> (<span class="str">'2026-03-01'</span>);
+
+<span class="kw">CREATE TABLE</span> audit_event_y2026m03
+  <span class="kw">PARTITION OF</span> audit_event
+  <span class="kw">FOR VALUES FROM</span> (<span class="str">'2026-03-01'</span>) <span class="kw">TO</span> (<span class="str">'2026-04-01'</span>);
+
+<span class="cm">-- ... dst hingga Desember 2026</span>
+
+<span class="cm">-- ── Index per partisi (otomatis diwarisi) ──</span>
+<span class="kw">CREATE INDEX</span> idx_audit_school_time
+  <span class="kw">ON</span> audit_event (school_id, created_at <span class="kw">DESC</span>);
+
+<span class="kw">CREATE INDEX</span> idx_audit_event_type
+  <span class="kw">ON</span> audit_event (event_type, created_at <span class="kw">DESC</span>);
+
+<span class="cm">-- ── Retensi: drop partisi lama (365 hari) ──</span>
+<span class="cm">-- Jalankan via cron job atau pg_partman maintenance:</span>
+<span class="kw">DROP TABLE IF EXISTS</span> audit_event_y2025m01;  <span class="cm">-- Jan 2025</span>
+<span class="kw">DROP TABLE IF EXISTS</span> audit_event_y2025m02;  <span class="cm">-- Feb 2025</span>
+
+<span class="cm">-- ══════════════════════════════════════════════
+-- AUTO-CREATE partisi bulan berikutnya (run monthly)
+-- ══════════════════════════════════════════════</span>
+<span class="kw">CREATE OR REPLACE FUNCTION</span> <span class="fn">create_next_audit_partition</span>()
+<span class="kw">RETURNS VOID AS</span> $$
+<span class="kw">DECLARE</span>
+  next_month DATE := date_trunc(<span class="str">'month'</span>, now() + <span class="kw">INTERVAL</span> <span class="str">'1 month'</span>);
+  part_name  TEXT := <span class="str">'audit_event_y'</span> || to_char(next_month, <span class="str">'YYYYmMM'</span>);
+  from_val   TEXT := to_char(next_month, <span class="str">'YYYY-MM-DD'</span>);
+  to_val     TEXT := to_char(next_month + <span class="kw">INTERVAL</span> <span class="str">'1 month'</span>, <span class="str">'YYYY-MM-DD'</span>);
+<span class="kw">BEGIN</span>
+  <span class="kw">EXECUTE</span> format(
+    <span class="str">'CREATE TABLE IF NOT EXISTS %I PARTITION OF audit_event FOR VALUES FROM (%L) TO (%L)'</span>,
+    part_name, from_val, to_val
+  );
+<span class="kw">END</span>;
+$$ <span class="kw">LANGUAGE</span> plpgsql;</div>
+</section>
+
+<!-- ═══ RLS ═══ -->
+<section id="s-rls" style="display:none">
+<div class="page-hdr"><div class="page-title">Row Level Security Policies</div></div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm">-- ══════════════════════════════════════════════
+-- RLS: setup di awal DB session
+-- ══════════════════════════════════════════════</span>
+
+<span class="cm">-- Di application layer (db/session.py), setiap session:</span>
+<span class="kw">SELECT</span> <span class="fn">set_config</span>(<span class="str">'app.school_id'</span>, $1, <span class="kw">true</span>);  <span class="cm">-- true = transaction-local</span>
+
+<span class="cm">-- ══════════════════════════════════════════════
+-- Aktifkan RLS pada semua tabel bisnis
+-- ══════════════════════════════════════════════</span>
+<span class="kw">ALTER TABLE</span> integration_connection <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="kw">ALTER TABLE</span> integration_object_map <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="kw">ALTER TABLE</span> integration_field_map  <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="kw">ALTER TABLE</span> sync_job               <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="kw">ALTER TABLE</span> sync_job_run           <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="kw">ALTER TABLE</span> sync_job_dlq           <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+<span class="kw">ALTER TABLE</span> audit_event            <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="cm">-- ══════════════════════════════════════════════
+-- Policy: tenant hanya bisa akses datanya sendiri
+-- ══════════════════════════════════════════════</span>
+
+<span class="cm">-- Contoh untuk sync_job (pola sama untuk tabel lain)</span>
+<span class="kw">CREATE POLICY</span> sync_job_tenant_isolation
+  <span class="kw">ON</span> sync_job
+  <span class="kw">AS PERMISSIVE</span>
+  <span class="kw">FOR ALL</span>
+  <span class="kw">TO app_user</span>                              <span class="cm">-- role DB yang dipakai aplikasi</span>
+  <span class="kw">USING</span> (
+    school_id = <span class="fn">current_setting</span>(<span class="str">'app.school_id'</span>, <span class="kw">true</span>)::<span class="ty">UUID</span>
+  )
+  <span class="kw">WITH CHECK</span> (
+    school_id = <span class="fn">current_setting</span>(<span class="str">'app.school_id'</span>, <span class="kw">true</span>)::<span class="ty">UUID</span>
+  );
+
+<span class="cm">-- Policy untuk sync_job_run</span>
+<span class="kw">CREATE POLICY</span> sync_job_run_isolation <span class="kw">ON</span> sync_job_run
+  <span class="kw">AS PERMISSIVE FOR ALL TO</span> app_user
+  <span class="kw">USING</span> (school_id = <span class="fn">current_setting</span>(<span class="str">'app.school_id'</span>, <span class="kw">true</span>)::<span class="ty">UUID</span>)
+  <span class="kw">WITH CHECK</span> (school_id = <span class="fn">current_setting</span>(<span class="str">'app.school_id'</span>, <span class="kw">true</span>)::<span class="ty">UUID</span>);
+
+<span class="cm">-- Policy untuk audit_event (read-only untuk non-super-admin)</span>
+<span class="kw">CREATE POLICY</span> audit_event_tenant_read <span class="kw">ON</span> audit_event
+  <span class="kw">AS PERMISSIVE FOR SELECT TO</span> app_user
+  <span class="kw">USING</span> (school_id = <span class="fn">current_setting</span>(<span class="str">'app.school_id'</span>, <span class="kw">true</span>)::<span class="ty">UUID</span>);
+
+<span class="cm">-- Super admin bypass RLS (platform ops)</span>
+<span class="kw">CREATE POLICY</span> audit_event_super_admin <span class="kw">ON</span> audit_event
+  <span class="kw">AS PERMISSIVE FOR ALL TO</span> super_admin
+  <span class="kw">USING</span> (<span class="kw">true</span>);  <span class="cm">-- full access</span>
+
+<span class="cm">-- ══════════════════════════════════════════════
+-- DB Roles (prinsip least privilege)
+-- ══════════════════════════════════════════════</span>
+<span class="kw">CREATE ROLE</span> app_user   <span class="kw">NOLOGIN</span>;  <span class="cm">-- role untuk API & Worker</span>
+<span class="kw">CREATE ROLE</span> super_admin <span class="kw">NOLOGIN</span>; <span class="cm">-- platform ops saja</span>
+<span class="kw">CREATE ROLE</span> readonly_user <span class="kw">NOLOGIN</span>; <span class="cm">-- untuk reporting/analytics</span>
+
+<span class="cm">-- Grant permissions</span>
+<span class="kw">GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA PUBLIC TO</span> app_user;
+<span class="kw">GRANT SELECT ON ALL TABLES IN SCHEMA PUBLIC TO</span> readonly_user;
+<span class="kw">GRANT ALL ON ALL TABLES IN SCHEMA PUBLIC TO</span> super_admin;</div>
+</section>
+
+<!-- ═══ INDEXES ═══ -->
+<section id="s-indexes" style="display:none">
+<div class="page-hdr"><div class="page-title">Index Strategy</div></div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm">-- ══════════════════════════════════════════════
+-- INDEX STRATEGY
+-- Prinsip: index setiap (school_id + kolom filter utama)
+-- Karena semua query selalu filter by school_id dulu
+-- ══════════════════════════════════════════════</span>
+
+<span class="cm">-- ── school ──</span>
+<span class="kw">CREATE UNIQUE INDEX</span> idx_school_domain  <span class="kw">ON</span> school (lower(domain));
+<span class="kw">CREATE UNIQUE INDEX</span> idx_school_npsn    <span class="kw">ON</span> school (npsn) <span class="kw">WHERE</span> npsn <span class="kw">IS NOT NULL</span>;
+<span class="kw">CREATE INDEX</span>        idx_school_status   <span class="kw">ON</span> school (status);
+
+<span class="cm">-- ── user_account ──</span>
+<span class="kw">CREATE UNIQUE INDEX</span> idx_user_email     <span class="kw">ON</span> user_account (lower(email));
+<span class="kw">CREATE UNIQUE INDEX</span> idx_user_oidc_sub  <span class="kw">ON</span> user_account (oidc_sub) <span class="kw">WHERE</span> oidc_sub <span class="kw">IS NOT NULL</span>;
+
+<span class="cm">-- ── integration_connection ──</span>
+<span class="kw">CREATE INDEX</span> idx_ic_school_status <span class="kw">ON</span> integration_connection (school_id, status);
+<span class="kw">CREATE INDEX</span> idx_ic_school_prov   <span class="kw">ON</span> integration_connection (school_id, provider);
+
+<span class="cm">-- ── integration_field_map ──</span>
+<span class="cm">-- UNIQUE index sudah ada dari constraint, tambahkan covering index:</span>
+<span class="kw">CREATE INDEX</span> idx_ifm_school_obj <span class="kw">ON</span> integration_field_map (school_id, object_map_id);
+
+<span class="cm">-- ── sync_job ──</span>
+<span class="kw">CREATE INDEX</span> idx_sj_school_status <span class="kw">ON</span> sync_job (school_id, status);
+<span class="cm">-- Partial index untuk scheduler (hanya query active job dengan next_run_at)</span>
+<span class="kw">CREATE INDEX</span> idx_sj_next_run <span class="kw">ON</span> sync_job (next_run_at)
+  <span class="kw">WHERE</span> status = <span class="str">'active'</span> <span class="kw">AND</span> schedule_cron <span class="kw">IS NOT NULL</span>;
+
+<span class="cm">-- ── sync_job_run ──</span>
+<span class="kw">CREATE INDEX</span> idx_sjr_job     <span class="kw">ON</span> sync_job_run (job_id, created_at <span class="kw">DESC</span>);
+<span class="kw">CREATE INDEX</span> idx_sjr_school  <span class="kw">ON</span> sync_job_run (school_id, created_at <span class="kw">DESC</span>);
+<span class="cm">-- Partial index untuk query pending jobs di worker</span>
+<span class="kw">CREATE INDEX</span> idx_sjr_queued  <span class="kw">ON</span> sync_job_run (created_at <span class="kw">ASC</span>)
+  <span class="kw">WHERE</span> status = <span class="str">'queued'</span>;
+
+<span class="cm">-- ── sync_job_dlq ──</span>
+<span class="kw">CREATE INDEX</span> idx_dlq_school <span class="kw">ON</span> sync_job_dlq (school_id, created_at <span class="kw">DESC</span>);
+<span class="kw">CREATE INDEX</span> idx_dlq_retry  <span class="kw">ON</span> sync_job_dlq (created_at)
+  <span class="kw">WHERE</span> is_permanent = <span class="kw">false</span>;
+
+<span class="cm">-- ── audit_event (partitioned — index otomatis per partisi) ──</span>
+<span class="kw">CREATE INDEX</span> idx_ae_school_time <span class="kw">ON</span> audit_event (school_id, created_at <span class="kw">DESC</span>);
+<span class="kw">CREATE INDEX</span> idx_ae_type        <span class="kw">ON</span> audit_event (event_type, created_at <span class="kw">DESC</span>);
+<span class="kw">CREATE INDEX</span> idx_ae_actor       <span class="kw">ON</span> audit_event (actor_id, created_at <span class="kw">DESC</span>)
+  <span class="kw">WHERE</span> actor_id <span class="kw">IS NOT NULL</span>;</div>
+</section>
+
+<!-- ═══ KEY QUERIES ═══ -->
+<section id="s-queries" style="display:none">
+<div class="page-hdr"><div class="page-title">Key Queries</div></div>
+
+<div class="stitle">Fetch pending jobs (Worker — FOR UPDATE SKIP LOCKED)</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm">-- Worker query: ambil batch job queued tanpa blocking worker lain</span>
+<span class="kw">BEGIN</span>;
+
+<span class="kw">WITH</span> claimed <span class="kw">AS</span> (
+  <span class="kw">SELECT</span> id, job_id, school_id, created_at
+  <span class="kw">FROM</span>   sync_job_run
+  <span class="kw">WHERE</span>  status = <span class="str">'queued'</span>
+  <span class="kw">ORDER BY</span> created_at <span class="kw">ASC</span>
+  <span class="kw">LIMIT</span>  10
+  <span class="kw">FOR UPDATE SKIP LOCKED</span>   <span class="cm">-- kunci baris, skip yang sedang diproses worker lain</span>
+)
+<span class="kw">UPDATE</span> sync_job_run <span class="kw">SET</span>
+  status     = <span class="str">'running'</span>,
+  started_at = now()
+<span class="kw">WHERE</span> id <span class="kw">IN</span> (<span class="kw">SELECT</span> id <span class="kw">FROM</span> claimed)
+<span class="kw">RETURNING</span> id, job_id, school_id;
+
+<span class="kw">COMMIT</span>;</div>
+
+<div class="stitle">Create sync job + enqueue run</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm">-- 1. Insert sync_job</span>
+<span class="kw">INSERT INTO</span> sync_job (school_id, connection_id, name, schedule_cron, config)
+<span class="kw">VALUES</span> ($1, $2, $3, $4, $5)
+<span class="kw">RETURNING</span> id, name, status;
+
+<span class="cm">-- 2. Insert sync_job_run (queued) untuk immediate trigger</span>
+<span class="kw">INSERT INTO</span> sync_job_run (job_id, school_id, triggered_by)
+<span class="kw">VALUES</span> ($job_id, $school_id, <span class="str">'api'</span>)
+<span class="kw">RETURNING</span> id;  <span class="cm">-- run_id yang dikembalikan ke FE</span></div>
+
+<div class="stitle">Query audit events per tenant dengan range</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm">-- Partition pruning otomatis karena ada filter created_at</span>
+<span class="kw">SELECT</span>
+  id, event_type, resource_type, resource_id,
+  actor_id, metadata, ip_address, trace_id, created_at
+<span class="kw">FROM</span>   audit_event
+<span class="kw">WHERE</span>  school_id  = $1
+  <span class="kw">AND</span>  created_at <span class="op">BETWEEN</span> $2 <span class="kw">AND</span> $3
+  <span class="kw">AND</span>  ($4 <span class="kw">IS NULL OR</span> event_type = $4)   <span class="cm">-- optional filter by type</span>
+<span class="kw">ORDER BY</span> created_at <span class="kw">DESC</span>
+<span class="kw">LIMIT</span>  $5 <span class="kw">OFFSET</span> $6;   <span class="cm">-- pagination</span></div>
+
+<div class="stitle">DLQ: fetch reprocessable jobs</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="kw">SELECT</span>
+  d.id, d.job_id, d.school_id, d.payload,
+  d.error_reason, d.attempts, d.created_at,
+  j.name <span class="kw">AS</span> job_name,
+  j.connection_id
+<span class="kw">FROM</span>  sync_job_dlq d
+<span class="kw">JOIN</span>  sync_job j <span class="kw">ON</span> j.id = d.job_id
+<span class="kw">WHERE</span> d.school_id    = $1
+  <span class="kw">AND</span> d.is_permanent = <span class="kw">false</span>
+  <span class="kw">AND</span> ($2 <span class="kw">IS NULL OR</span> d.error_reason = $2)
+<span class="kw">ORDER BY</span> d.created_at <span class="kw">DESC</span>
+<span class="kw">FOR UPDATE SKIP LOCKED</span>   <span class="cm">-- jika reprocess concurrent</span>
+<span class="kw">LIMIT</span> 50;</div>
+</section>
+
+<!-- ═══ UPSERT ═══ -->
+<section id="s-upsert" style="display:none">
+<div class="page-hdr"><div class="page-title">Upsert Patterns</div></div>
+
+<div class="stitle">Upsert field mapping (idempotent)</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm">-- Bulk upsert field mappings — aman dipanggil berkali-kali</span>
+<span class="cm">-- UNIQUE constraint: (object_map_id, school_id, source_field)</span>
+<span class="kw">INSERT INTO</span> integration_field_map
+  (object_map_id, school_id, source_field, target_field, transform_fn, is_required)
+<span class="kw">VALUES</span>
+  ($1, $2, $3, $4, $5, $6),
+  ($1, $2, $7, $8, $9, $10)
+  <span class="cm">-- ... dst untuk bulk insert</span>
+<span class="kw">ON CONFLICT</span> (object_map_id, school_id, source_field)
+<span class="kw">DO UPDATE SET</span>
+  target_field = EXCLUDED.target_field,
+  transform_fn = EXCLUDED.transform_fn,
+  is_required  = EXCLUDED.is_required,
+  updated_at   = now()
+<span class="kw">RETURNING</span> id, source_field, target_field, updated_at;</div>
+
+<div class="stitle">Upsert siswa dari SIS (worker)</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm">-- Upsert data siswa — idempotent dengan external_id dari SIS</span>
+<span class="kw">INSERT INTO</span> siswa (school_id, nis, nama, kelas, jenis_kelamin, data, external_id)
+<span class="kw">SELECT</span>
+  $school_id,
+  d.nis,
+  d.nama,
+  d.kelas,
+  d.jenis_kelamin,
+  d.data,
+  d.external_id  <span class="cm">-- ID unik dari SIS vendor</span>
+<span class="kw">FROM</span> jsonb_to_recordset($batch::jsonb) <span class="kw">AS</span> d(
+  nis text, nama text, kelas text, jenis_kelamin text, data jsonb, external_id text
+)
+<span class="kw">ON CONFLICT</span> (school_id, external_id)
+<span class="kw">DO UPDATE SET</span>
+  nis           = EXCLUDED.nis,
+  nama          = EXCLUDED.nama,
+  kelas         = EXCLUDED.kelas,
+  jenis_kelamin = EXCLUDED.jenis_kelamin,
+  data          = EXCLUDED.data,
+  updated_at    = now()
+<span class="kw">RETURNING</span>
+  id,
+  (xmax = 0) <span class="kw">AS</span> is_insert;  <span class="cm">-- true=inserted, false=updated</span></div>
+
+<div class="stitle">Upsert sync_job_run status (atomic)</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm">-- Update status + timing atomically</span>
+<span class="kw">UPDATE</span> sync_job_run
+<span class="kw">SET</span>
+  status         = $2,
+  records_synced = $3,
+  records_failed = $4,
+  error_message  = $5,
+  finished_at    = now(),
+  duration_ms    = EXTRACT(EPOCH <span class="kw">FROM</span> (now() - started_at)) * 1000
+<span class="kw">WHERE</span> id = $1
+  <span class="kw">AND</span> status = <span class="str">'running'</span>  <span class="cm">-- hanya update jika masih running (idempotency)</span>
+<span class="kw">RETURNING</span> id, status, duration_ms;</div>
+</section>
+
+<!-- ═══ MIGRATIONS ═══ -->
+<section id="s-migrations" style="display:none">
+<div class="page-hdr"><div class="page-title">Alembic Migrations</div></div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button"><span class="cm"># alembic.ini — konfigurasi</span>
+[alembic]
+script_location = src/db/migrations
+sqlalchemy.url = %(DATABASE_URL)s   <span class="cm"># dari env var</span>
+version_locations = src/db/migrations/versions</div>
+
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm"># src/db/migrations/env.py — async support</span>
+<span class="kw">from</span> alembic <span class="kw">import</span> context
+<span class="kw">from</span> sqlalchemy.ext.asyncio <span class="kw">import</span> create_async_engine
+<span class="kw">from</span> models <span class="kw">import</span> Base  <span class="cm"># import semua models untuk autogenerate</span>
+
+<span class="kw">def</span> <span class="fn">run_migrations_online</span>():
+    connectable = create_async_engine(context.config.get_main_option(<span class="str">"sqlalchemy.url"</span>))
+    <span class="kw">with</span> connectable.connect() <span class="kw">as</span> connection:
+        context.configure(connection=connection, target_metadata=Base.metadata)
+        <span class="kw">with</span> context.begin_transaction():
+            context.run_migrations()</div>
+
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button"><span class="cm"># Workflow harian</span>
+
+<span class="cm"># 1. Generate migration baru setelah ubah models</span>
+alembic revision --autogenerate -m <span class="str">"add_sso_config_to_school"</span>
+
+<span class="cm"># 2. Review migration yang di-generate (WAJIB review sebelum apply)</span>
+cat src/db/migrations/versions/xxxx_add_sso_config_to_school.py
+
+<span class="cm"># 3. Apply ke dev</span>
+alembic upgrade head
+
+<span class="cm"># 4. Rollback jika ada masalah</span>
+alembic downgrade -1
+
+<span class="cm"># 5. History</span>
+alembic history --verbose
+
+<span class="cm"># Contoh migration file:</span>
+<span class="cm"># def upgrade():</span>
+<span class="cm">#     op.add_column('school', sa.Column('sso_config', sa.JSON(), nullable=True))</span>
+<span class="cm">#     op.execute("UPDATE school SET sso_config = '{}' WHERE sso_config IS NULL")</span>
+<span class="cm">#     op.alter_column('school', 'sso_config', nullable=False, server_default='{}')</span>
+<span class="cm"># def downgrade():</span>
+<span class="cm">#     op.drop_column('school', 'sso_config')</span></div>
+</section>
+
+<!-- ═══ RETENTION ═══ -->
+<section id="s-retention" style="display:none">
+<div class="page-hdr"><div class="page-title">Retensi & Archiving</div></div>
+
+<div class="stitle">Kebijakan Retensi per Tabel</div>
+<table class="tbl">
+  <thead><tr><th>Tabel</th><th>Retensi</th><th>Metode</th><th>Estimasi Size/Sekolah</th></tr></thead>
+  <tbody>
+    <tr><td><code>audit_event</code></td><td>365 hari</td><td>DROP PARTITION bulan lama</td><td>~50MB/yr (aktif)</td></tr>
+    <tr><td><code>sync_job_run</code></td><td>90 hari</td><td>DELETE batch by created_at</td><td>~5MB/yr</td></tr>
+    <tr><td><code>sync_job_dlq</code></td><td>30 hari</td><td>DELETE batch by created_at</td><td>~1MB/yr</td></tr>
+    <tr><td><code>sync_job</code></td><td>Permanen</td><td>Soft delete (status=deleted)</td><td>~100KB total</td></tr>
+    <tr><td><code>integration_*</code></td><td>Permanen</td><td>Soft delete via is_active</td><td>~100KB total</td></tr>
+    <tr><td><code>school</code></td><td>Permanen</td><td>Status=suspended/isolated</td><td>Negligible</td></tr>
+  </tbody>
+</table>
+
+<div class="stitle">Cleanup Script (jalankan via cron)</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button"><span class="cm">-- Cleanup sync_job_run (retensi 90 hari)</span>
+<span class="kw">DELETE FROM</span> sync_job_run
+<span class="kw">WHERE</span>  created_at < now() - <span class="kw">INTERVAL</span> <span class="str">'90 days'</span>
+  <span class="kw">AND</span>  status <span class="kw">IN</span> (<span class="str">'done'</span>, <span class="str">'cancelled'</span>);  <span class="cm">-- jangan hapus failed sebelum DLQ selesai</span>
+
+<span class="cm">-- Cleanup DLQ (retensi 30 hari)</span>
+<span class="kw">DELETE FROM</span> sync_job_dlq
+<span class="kw">WHERE</span> created_at < now() - <span class="kw">INTERVAL</span> <span class="str">'30 days'</span>;
+
+<span class="cm">-- Drop audit partition lama (365 hari)</span>
+<span class="kw">SELECT</span> <span class="fn">drop_old_audit_partitions</span>();  <span class="cm">-- lihat fungsi di DDL audit</span>
+
+<span class="cm">-- Setelah delete besar: VACUUM ANALYZE untuk update statistik</span>
+VACUUM ANALYZE sync_job_run;
+VACUUM ANALYZE sync_job_dlq;</div>
+</section>
+
+<!-- ═══ BACKUP ═══ -->
+<section id="s-backup" style="display:none">
+<div class="page-hdr"><div class="page-title">Backup & PITR</div></div>
+
+<div class="stitle">Konfigurasi WAL Archiving</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button"><span class="cm"># postgresql.conf</span>
+wal_level                = replica
+archive_mode             = on
+archive_command          = <span class="str">'aws s3 cp %p s3://school-backup-prod/wal/%f'</span>
+restore_command          = <span class="str">'aws s3 cp s3://school-backup-prod/wal/%f %p'</span>
+max_wal_senders          = 5
+wal_keep_size            = 512MB
+
+<span class="cm"># recovery.conf (untuk PITR)</span>
+recovery_target_time     = <span class="str">'2026-04-01 06:30:00+07'</span>   <span class="cm"># titik restore</span>
+recovery_target_action   = <span class="str">'promote'</span>                  <span class="cm"># jadikan primary</span>
+restore_command          = <span class="str">'aws s3 cp s3://school-backup-prod/wal/%f %p'</span></div>
+
+<div class="stitle">Backup Schedule & Restore Drill Checklist</div>
+<table class="tbl">
+  <thead><tr><th>Jenis</th><th>Frekuensi</th><th>Retention</th><th>Target</th></tr></thead>
+  <tbody>
+    <tr><td>pg_basebackup</td><td>Tiap 24 jam (02:00 WIB)</td><td>30 hari</td><td>S3 + enkripsi KMS</td></tr>
+    <tr><td>WAL archive</td><td>Kontinu (tiap 5 menit max)</td><td>7 hari</td><td>S3 / object storage</td></tr>
+    <tr><td>Restore drill</td><td>Mingguan (Jumat)</td><td>—</td><td>Namespace uji isolasi</td></tr>
+  </tbody>
+</table>
+
+<div class="info-row"><span class="info-tag b-green">RPO</span><span>&lt; 5 menit — WAL lag aktual ~2 menit dari pengukuran terakhir</span></div>
+<div class="info-row"><span class="info-tag b-blue">RTO</span><span>&lt; 30 menit — berdasarkan restore drill di environment uji</span></div>
+<div class="info-row"><span class="info-tag b-danger">Wajib</span><span>Restore drill ke namespace TERPISAH. Jangan restore ke production untuk drill.</span></div>
+</section>
+
+<!-- ═══ POOLING ═══ -->
+<section id="s-pooling" style="display:none">
+<div class="page-hdr"><div class="page-title">Connection Pooling (PgBouncer)</div></div>
+
+<div class="stitle">Konfigurasi PgBouncer</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button"><span class="cm"># pgbouncer.ini</span>
+[databases]
+school_db = host=postgres-svc port=5432 dbname=school_prod
+
+[pgbouncer]
+<span class="cm"># Pool mode: session (default) atau transaction</span>
+pool_mode              = session        <span class="cm"># AMAN untuk app yang pakai SET/advisory lock</span>
+<span class="cm"># Ganti ke 'transaction' jika app stateless dan tidak pakai SET commands</span>
+
+max_client_conn        = 200            <span class="cm"># max koneksi dari aplikasi</span>
+default_pool_size      = 20            <span class="cm"># server connections per db/user pair</span>
+reserve_pool_size      = 5             <span class="cm"># extra slot saat peak</span>
+reserve_pool_timeout   = 3             <span class="cm"># detik tunggu sebelum pakai reserve</span>
+server_idle_timeout    = 600           <span class="cm"># tutup idle server conn (10 menit)</span>
+client_idle_timeout    = 0             <span class="cm"># 0 = tidak timeout client idle</span>
+
+auth_type              = scram-sha-256
+auth_file              = /etc/pgbouncer/userlist.txt
+
+listen_addr            = 0.0.0.0
+listen_port            = 5432
+admin_users            = pgbouncer_admin
+
+<span class="cm"># Logging</span>
+log_connections        = 0
+log_disconnections     = 0
+log_pooler_errors      = 1
+stats_period           = 60</div>
+
+<div class="stitle">Trade-off: Session vs Transaction Mode</div>
+<table class="tbl">
+  <thead><tr><th>Aspek</th><th>Session Mode</th><th>Transaction Mode</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Kompatibilitas</strong></td><td>✓ Semua fitur PG (SET, advisory lock, prepared stmt)</td><td>✗ Tidak bisa pakai SET, advisory lock, LISTEN</td></tr>
+    <tr><td><strong>Multiplexing</strong></td><td>1 client = 1 server conn selama sesi</td><td>1 server conn bisa serve banyak client</td></tr>
+    <tr><td><strong>Scale</strong></td><td>Terbatas — client = server conn</td><td>Tinggi — 200 client bisa share 20 server conn</td></tr>
+    <tr><td><strong>Cocok untuk</strong></td><td>FastAPI + SQLAlchemy (pakai SET untuk RLS)</td><td>Stateless microservice tanpa session state</td></tr>
+    <tr><td><strong>Rekomendasi</strong></td><td>✓ Default untuk project ini</td><td>Pertimbangkan jika sudah 10k+ koneksi</td></tr>
+  </tbody>
+</table>
+
+<div class="stitle">RLS + PgBouncer — Catatan Penting</div>
+<div class="info-row" style="background:var(--warn-bg);border-color:#FAC775"><span class="info-tag b-warn">Penting</span><span>Karena RLS menggunakan <code>set_config('app.school_id', ...)</code> yang bersifat transaction-local (parameter ke-3 = true), setting ini AMAN dengan transaction pooling — reset otomatis setiap akhir transaksi.</span></div>
+<div class="info-row"><span class="info-tag b-blue">Tip</span><span>Pastikan <code>set_config(..., true)</code> (bukan false). Parameter true = transaction-local, false = session-local yang bisa bocor ke request berikutnya di session pooling.</span></div>
+</section>
+
+</div>
+</main>
+</div>
+
+<script>
+function show(id, btn) {
+  document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('on'));
+  document.getElementById('s-' + id).style.display = 'block';
+  btn.classList.add('on');
+  document.querySelector('.main').scrollTop = 0;
+}
+function cp(btn) {
+  const text = btn.closest('.code').innerText.replace('copy\n','').replace('copy','');
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 1800);
+  });
+}
+</script>
+</body>
+</html>

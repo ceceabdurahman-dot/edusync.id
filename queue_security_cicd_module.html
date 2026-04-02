@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Queue, Security & CI/CD — SaaS School Integrator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F0EDE7;--bg2:#E5E2DA;--bg3:#D9D6CE;
+  --text:#1C1B18;--text2:#5A5950;--text3:#8C8B82;
+  --border:rgba(28,27,24,0.1);--border2:rgba(28,27,24,0.2);
+  --accent:#1A56A4;--accent-bg:#EBF1FA;--accent-text:#0D3268;
+  --success:#0D7A55;--success-bg:#E4F5EE;--success-text:#064530;
+  --warn:#9A5C00;--warn-bg:#FEF3DC;--warn-text:#5A3500;
+  --danger:#B52626;--danger-bg:#FDEAEA;--danger-text:#6B1414;
+  --purple:#5B4DB0;--purple-bg:#EEEDFE;--purple-text:#26215C;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --r:8px;--rl:12px;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:13px;line-height:1.6;min-height:100vh}
+.shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.sidebar{background:#0F0E09;padding:0;position:sticky;top:0;height:100vh;overflow-y:auto;scrollbar-width:none}
+.sidebar::-webkit-scrollbar{display:none}
+.sidebar-logo{padding:18px 16px 14px;border-bottom:0.5px solid rgba(255,255,255,0.07)}
+.sidebar-logo .mark{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#4A4940}
+.sidebar-logo .name{font-size:14px;font-weight:600;color:#F0EEE8;margin-top:2px}
+.nav-section{padding:10px 0 4px}
+.nav-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#2E2D28;padding:0 14px 4px}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 14px;font-size:12px;color:#6A6960;cursor:pointer;transition:all .12s;border:none;background:none;width:100%;text-align:left;font-family:var(--sans)}
+.nav-item:hover{color:#D4D2CC;background:rgba(255,255,255,0.04)}
+.nav-item.on{color:#F0EEE8;background:rgba(255,255,255,0.09);border-left:2px solid #E6A84A}
+.main{overflow-y:auto;height:100vh}
+.main-inner{padding:28px 32px 60px;max-width:920px}
+.page-hdr{margin-bottom:22px}
+.page-tag{display:inline-flex;align-items:center;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:20px;margin-bottom:8px}
+.pt-amber{color:var(--warn-text);background:var(--warn-bg)}
+.pt-red{color:var(--danger-text);background:var(--danger-bg)}
+.pt-blue{color:var(--accent-text);background:var(--accent-bg)}
+.pt-purple{color:var(--purple-text);background:var(--purple-bg)}
+.page-title{font-size:22px;font-weight:600;letter-spacing:-.03em;color:var(--text);line-height:1.2}
+.page-sub{font-size:12.5px;color:var(--text2);margin-top:5px;line-height:1.6;max-width:560px}
+.section{margin-bottom:30px}
+.stitle{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.stitle::after{content:'';flex:1;height:0.5px;background:var(--border)}
+.code{background:#0F0E09;border-radius:var(--r);padding:13px 15px;font-family:var(--mono);font-size:10.5px;line-height:1.75;color:#C8C6BE;overflow-x:auto;white-space:pre;margin-bottom:10px;position:relative;border:0.5px solid rgba(255,255,255,0.06)}
+.kw{color:#89A4CE}.str{color:#7EC89A}.cm{color:#4A4940;font-style:italic}.fn{color:#E6A84A}.ty{color:#C48FD4}.op{color:#89A4CE}
+.copy-btn{position:absolute;top:8px;right:8px;font-size:10px;padding:3px 8px;border-radius:4px;background:rgba(255,255,255,0.07);border:0.5px solid rgba(255,255,255,0.12);color:#8C8B82;cursor:pointer;font-family:var(--sans);transition:all .1s}
+.copy-btn:hover{background:rgba(255,255,255,0.14);color:#C8C6BE}
+.card{background:#fff;border:0.5px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:10px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:500;white-space:nowrap}
+.b-blue{background:var(--accent-bg);color:var(--accent-text)}.b-green{background:var(--success-bg);color:var(--success-text)}
+.b-warn{background:var(--warn-bg);color:var(--warn-text)}.b-danger{background:var(--danger-bg);color:var(--danger-text)}
+.b-purple{background:var(--purple-bg);color:var(--purple-text)}.b-gray{background:var(--bg3);color:var(--text2)}
+.tbl{width:100%;border-collapse:collapse;font-size:11.5px}
+.tbl th{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);padding:7px 10px;border-bottom:0.5px solid var(--border);text-align:left;background:var(--bg2)}
+.tbl td{padding:8px 10px;border-bottom:0.5px solid var(--border);vertical-align:top;color:var(--text);line-height:1.5}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--bg2)}
+.tbl code{font-family:var(--mono);font-size:10px;background:var(--bg3);padding:1px 5px;border-radius:4px;color:var(--accent)}
+.info-row{display:flex;align-items:flex-start;gap:10px;padding:9px 12px;border:0.5px solid var(--border);border-radius:var(--r);background:#fff;margin-bottom:7px;font-size:12px}
+.info-tag{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:1px}
+.check-list{list-style:none}
+.check-list li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:0.5px solid var(--border);font-size:12.5px}
+.check-list li:last-child{border-bottom:none}
+.ci{flex-shrink:0;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;margin-top:2px}
+.ci.ok{background:var(--success-bg);color:var(--success-text)}.ci.warn{background:var(--warn-bg);color:var(--warn-text)}.ci.info{background:var(--accent-bg);color:var(--accent-text)}.ci.danger{background:var(--danger-bg);color:var(--danger-text)}
+.metric-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.metric{background:var(--bg2);border-radius:var(--r);padding:10px 12px;border:0.5px solid var(--border)}
+.metric-lbl{font-size:11px;color:var(--text3);margin-bottom:3px}
+.metric-val{font-size:18px;font-weight:600;color:var(--text);font-family:var(--mono)}
+.metric-sub{font-size:10px;color:var(--text3);margin-top:2px}
+.flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.flow-node{background:#fff;border:0.5px solid var(--border2);border-radius:6px;padding:6px 12px;font-size:11.5px;font-weight:500}
+.flow-node.a{background:var(--accent-bg);border-color:#B5D4F4;color:var(--accent-text)}
+.flow-node.s{background:var(--success-bg);border-color:#9FE1CB;color:var(--success-text)}
+.flow-node.w{background:var(--warn-bg);border-color:#FAC775;color:var(--warn-text)}
+.flow-node.d{background:var(--danger-bg);border-color:#F09595;color:var(--danger-text)}
+.flow-arr{color:var(--text3);font-size:13px}
+.phase-card{border:0.5px solid var(--border);border-radius:var(--rl);padding:14px 16px;margin-bottom:10px}
+.phase-hdr{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.phase-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0}
+.phase-title{font-size:13px;font-weight:600}
+.phase-body{font-size:12px;color:var(--text2);line-height:1.6}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="mark">SaaS School</div>
+    <div class="name">Queue, Security & CI/CD</div>
+  </div>
+  <nav>
+    <div class="nav-section">
+      <div class="nav-label">Queue & Worker</div>
+      <button class="nav-item on" onclick="show('rmq-layout',this)">RabbitMQ Layout</button>
+      <button class="nav-item" onclick="show('retry-dlq',this)">Retry & DLQ</button>
+      <button class="nav-item" onclick="show('idempotency',this)">Idempotency</button>
+      <button class="nav-item" onclick="show('worker-full',this)">Worker Full Code</button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Security</div>
+      <button class="nav-item" onclick="show('sec-overview',this)">Checklist Overview</button>
+      <button class="nav-item" onclick="show('argon2',this)">Password Hashing</button>
+      <button class="nav-item" onclick="show('jwt-oidc',this)">JWT / OIDC</button>
+      <button class="nav-item" onclick="show('rate-limit',this)">Rate Limiting</button>
+      <button class="nav-item" onclick="show('secrets',this)">Secrets Rotation</button>
+      <button class="nav-item" onclick="show('pii',this)">PII & Data Minimization</button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">CI/CD & Deployment</div>
+      <button class="nav-item" onclick="show('cicd-flow',this)">Pipeline Flow</button>
+      <button class="nav-item" onclick="show('github-actions',this)">GitHub Actions</button>
+      <button class="nav-item" onclick="show('deploy-checklist',this)">Deploy Checklist</button>
+      <button class="nav-item" onclick="show('runbook',this)">Runbook Operasional</button>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Roadmap</div>
+      <button class="nav-item" onclick="show('roadmap',this)">Fase & Prioritas</button>
+      <button class="nav-item" onclick="show('6steps',this)">6 Langkah Awal</button>
+    </div>
+  </nav>
+</aside>
+
+<main class="main">
+<div class="main-inner">
+
+<!-- ═══ RMQ LAYOUT ═══ -->
+<section id="s-rmq-layout" style="display:block">
+<div class="page-hdr">
+  <div class="page-tag pt-amber">Modul 4 — Queue & Worker</div>
+  <div class="page-title">RabbitMQ Exchange & Queue Layout</div>
+  <div class="page-sub">Topic exchange untuk routing per tenant/provider. DLX (Dead-Letter Exchange) untuk automatic DLQ. Persistent messages untuk durabilitas.</div>
+</div>
+
+<div class="stitle">Flow: API → MQ → Worker → DB</div>
+<div class="flow">
+  <div class="flow-node a">API Server</div><div class="flow-arr">→ publish</div>
+  <div class="flow-node">school.sync exchange</div><div class="flow-arr">→ route</div>
+  <div class="flow-node">sync.jobs queue</div><div class="flow-arr">→ consume</div>
+  <div class="flow-node a">Worker</div><div class="flow-arr">→ upsert</div>
+  <div class="flow-node s">PostgreSQL</div>
+</div>
+<div class="flow">
+  <div class="flow-node a">Worker</div><div class="flow-arr">max retry → nack</div>
+  <div class="flow-node w">DLX exchange</div><div class="flow-arr">→ route</div>
+  <div class="flow-node d">sync.dlq queue</div><div class="flow-arr">→ human review</div>
+</div>
+
+<div class="stitle">Exchange & Queue Definitions</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm"># apps/worker/src/mq/setup.py — declare topology saat startup</span>
+<span class="kw">import</span> aio_pika
+
+<span class="kw">async def</span> <span class="fn">setup_rabbitmq</span>(connection: aio_pika.Connection):
+    channel = <span class="kw">await</span> connection.channel()
+    <span class="kw">await</span> channel.set_qos(prefetch_count=10)  <span class="cm"># 1 worker: 10 msg max in-flight</span>
+
+    <span class="cm"># ── Dead-Letter Exchange (DLX) ──────────────────</span>
+    dlx = <span class="kw">await</span> channel.declare_exchange(
+        <span class="str">"school.dlx"</span>,
+        aio_pika.ExchangeType.TOPIC,
+        durable=<span class="kw">True</span>,
+    )
+
+    <span class="cm"># ── Dead-Letter Queue ───────────────────────────</span>
+    dlq = <span class="kw">await</span> channel.declare_queue(
+        <span class="str">"sync.dlq"</span>,
+        durable=<span class="kw">True</span>,
+        arguments={<span class="str">"x-queue-type"</span>: <span class="str">"quorum"</span>},  <span class="cm"># quorum queue — HA</span>
+    )
+    <span class="kw">await</span> dlq.bind(dlx, routing_key=<span class="str">"#"</span>)  <span class="cm"># tangkap semua DL messages</span>
+
+    <span class="cm"># ── Main exchange ───────────────────────────────</span>
+    main_exchange = <span class="kw">await</span> channel.declare_exchange(
+        <span class="str">"school.sync"</span>,
+        aio_pika.ExchangeType.TOPIC,
+        durable=<span class="kw">True</span>,
+    )
+
+    <span class="cm"># ── Main sync queue (dengan DLX) ────────────────</span>
+    sync_queue = <span class="kw">await</span> channel.declare_queue(
+        <span class="str">"sync.jobs"</span>,
+        durable=<span class="kw">True</span>,
+        arguments={
+            <span class="str">"x-dead-letter-exchange"</span>: <span class="str">"school.dlx"</span>,   <span class="cm"># nack → DLQ otomatis</span>
+            <span class="str">"x-dead-letter-routing-key"</span>: <span class="str">"sync.failed"</span>,
+            <span class="str">"x-queue-type"</span>: <span class="str">"quorum"</span>,                  <span class="cm"># HA untuk prod</span>
+            <span class="str">"x-message-ttl"</span>: 3_600_000,                  <span class="cm"># 1 jam max age</span>
+        },
+    )
+    <span class="cm"># sync.{school_id}.{provider} → sync.jobs</span>
+    <span class="kw">await</span> sync_queue.bind(main_exchange, routing_key=<span class="str">"sync.#"</span>)
+
+    <span class="cm"># ── Test connection queue ────────────────────────</span>
+    test_queue = <span class="kw">await</span> channel.declare_queue(<span class="str">"test.connection.jobs"</span>, durable=<span class="kw">True</span>)
+    <span class="kw">await</span> test_queue.bind(main_exchange, routing_key=<span class="str">"test.connection.#"</span>)
+
+    <span class="cm"># ── Report queue ────────────────────────────────</span>
+    report_queue = <span class="kw">await</span> channel.declare_queue(<span class="str">"report.jobs"</span>, durable=<span class="kw">True</span>)
+    <span class="kw">await</span> report_queue.bind(main_exchange, routing_key=<span class="str">"report.#"</span>)
+
+    <span class="kw">return</span> {
+        <span class="str">"exchange"</span>: main_exchange,
+        <span class="str">"sync_queue"</span>: sync_queue,
+        <span class="str">"dlq"</span>: dlq,
+    }
+
+<span class="cm"># Routing key convention:</span>
+<span class="cm"># sync.{school_id}.{provider}     → untuk priority routing per tenant</span>
+<span class="cm"># sync.{school_id}.all            → semua provider sekolah tsb</span>
+<span class="cm"># test.connection.{connection_id}</span>
+<span class="cm"># report.{school_id}.{report_type}</span></div>
+
+<div class="stitle">Publisher — API Server</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm"># src/services/mq_publisher.py</span>
+<span class="kw">import</span> aio_pika, json
+<span class="kw">from</span> uuid <span class="kw">import</span> UUID
+
+<span class="kw">class</span> <span class="ty">MQPublisher</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, exchange: aio_pika.Exchange):
+        self._exchange = exchange
+
+    <span class="kw">async def</span> <span class="fn">publish_sync_job</span>(
+        self,
+        job_id: UUID,
+        run_id: UUID,
+        school_id: UUID,
+        provider: str,
+        payload: dict,
+    ):
+        routing_key = f<span class="str">"sync.{school_id}.{provider}"</span>
+        message = aio_pika.Message(
+            body=json.dumps({
+                <span class="str">"job_id"</span>:    str(job_id),
+                <span class="str">"run_id"</span>:    str(run_id),
+                <span class="str">"school_id"</span>: str(school_id),
+                <span class="str">"provider"</span>:  provider,
+                <span class="str">"payload"</span>:   payload,
+            }).encode(),
+            delivery_mode=aio_pika.DeliveryMode.PERSISTENT,  <span class="cm"># survive broker restart</span>
+            content_type=<span class="str">"application/json"</span>,
+            message_id=str(run_id),           <span class="cm"># untuk deduplekasi</span>
+            headers={<span class="str">"school_id"</span>: str(school_id)},
+        )
+        <span class="kw">await</span> self._exchange.publish(message, routing_key=routing_key)
+        <span class="kw">return</span> str(run_id)</div>
+</section>
+
+<!-- ═══ RETRY DLQ ═══ -->
+<section id="s-retry-dlq" style="display:none">
+<div class="page-hdr">
+  <div class="page-title">Retry Strategy & DLQ Pattern</div>
+  <div class="page-sub">Exponential backoff dengan full jitter. Max 5 attempts. Circuit breaker untuk melindungi SIS vendor dari overload.</div>
+</div>
+
+<div class="stitle">Backoff Formula</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm"># apps/worker/src/retry/backoff.py</span>
+<span class="kw">import</span> random, math
+
+<span class="kw">def</span> <span class="fn">full_jitter</span>(attempt: int, base: float = 2.0, cap: float = 60.0) -> float:
+    <span class="cm">"""
+    Full Jitter — AWS-recommended untuk mencegah thundering herd.
+    Formula: sleep = random_between(0, min(cap, base * 2^attempt))
+
+    Contoh output:
+    attempt 1 → sleep ∈ [0, 4s]
+    attempt 2 → sleep ∈ [0, 8s]
+    attempt 3 → sleep ∈ [0, 16s]
+    attempt 4 → sleep ∈ [0, 32s]
+    attempt 5 → sleep ∈ [0, 60s]  (capped)
+    """</span>
+    exp = min(cap, base * (2 ** attempt))
+    <span class="kw">return</span> random.uniform(0, exp)
+
+<span class="cm"># Contoh: visualisasi distribusi delay</span>
+<span class="cm"># attempt=1: E[delay] ≈ 2s, max 4s</span>
+<span class="cm"># attempt=2: E[delay] ≈ 4s, max 8s</span>
+<span class="cm"># attempt=5: E[delay] ≈ 30s, max 60s</span>
+<span class="cm"># Total worst case: ~120s untuk 5 attempts</span></div>
+
+<div class="stitle">Retry Decision Tree</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button"><span class="cm"># Klasifikasi error → tindakan</span>
+
+<span class="cm"># TransientError → retry dengan backoff</span>
+<span class="cm"># Contoh:</span>
+<span class="kw">class</span> <span class="ty">SISTimeoutError</span>(TransientError): <span class="kw">pass</span>       <span class="cm"># HTTP 503, 429, connection timeout</span>
+<span class="kw">class</span> <span class="ty">DatabaseConnectionError</span>(TransientError): <span class="kw">pass</span> <span class="cm"># pool exhausted sementara</span>
+<span class="kw">class</span> <span class="ty">RateLimitError</span>(TransientError): <span class="kw">pass</span>         <span class="cm"># HTTP 429 dari SIS</span>
+
+<span class="cm"># PermanentError → langsung DLQ, tidak retry</span>
+<span class="cm"># Contoh:</span>
+<span class="kw">class</span> <span class="ty">InvalidCredentialsError</span>(PermanentError): <span class="kw">pass</span>  <span class="cm"># HTTP 401/403 dari SIS</span>
+<span class="kw">class</span> <span class="ty">DataCorruptError</span>(PermanentError): <span class="kw">pass</span>        <span class="cm"># response format invalid</span>
+<span class="kw">class</span> <span class="ty">SchemaValidationError</span>(PermanentError): <span class="kw">pass</span>   <span class="cm"># field required hilang</span>
+<span class="kw">class</span> <span class="ty">TenantIsolatedError</span>(PermanentError): <span class="kw">pass</span>    <span class="cm"># sekolah di-isolasi</span>
+
+<span class="cm"># CircuitOpen → langsung DLQ (bukan retry)</span>
+<span class="cm"># Circuit breaker protect dari overload SIS vendor</span>
+
+<span class="cm"># Decision matrix:</span>
+<span class="cm"># HTTP 5xx + no circuit → TransientError → retry</span>
+<span class="cm"># HTTP 429              → TransientError + sleep rata (header Retry-After)</span>
+<span class="cm"># HTTP 401/403          → PermanentError → DLQ immediately</span>
+<span class="cm"># HTTP 200 bad data     → PermanentError → DLQ immediately</span>
+<span class="cm"># Circuit OPEN          → CircuitOpen    → DLQ + alert</span>
+<span class="cm"># Max retries exceeded  → DLQ + alert ops</span></div>
+
+<div class="stitle">DLQ Handler</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm"># apps/worker/src/dlq/handler.py</span>
+<span class="kw">import</span> structlog
+<span class="kw">from</span> db.session <span class="kw">import</span> get_db
+<span class="kw">from</span> db.repositories.sync_job_repo <span class="kw">import</span> SyncJobRepo
+
+log = structlog.get_logger()
+
+<span class="kw">async def</span> <span class="fn">send_to_dlq</span>(
+    job_id: str,
+    school_id: str,
+    run_id: str,
+    error: str,
+    attempts: int = 0,
+    permanent: bool = False,
+    payload: dict = None,
+):
+    <span class="kw">async with</span> get_db() <span class="kw">as</span> db:
+        repo = SyncJobRepo(db)
+
+        <span class="cm"># Tulis ke DB DLQ</span>
+        <span class="kw">await</span> repo.create_dlq_entry(
+            job_id=job_id,
+            run_id=run_id,
+            school_id=school_id,
+            payload=payload or {},
+            error_reason=error,
+            attempts=attempts,
+            is_permanent=permanent,
+        )
+
+        <span class="cm"># Update run status ke failed</span>
+        <span class="kw">await</span> repo.fail_run(run_id, error)
+
+    log.error(<span class="str">"job.dlq"</span>,
+        job_id=job_id, school_id=school_id,
+        run_id=run_id, error=error,
+        attempts=attempts, permanent=permanent,
+    )
+
+    <span class="cm"># Increment Prometheus counter</span>
+    <span class="kw">from</span> config.otel <span class="kw">import</span> dlq_total
+    dlq_total.labels(reason=error.split(<span class="str">":"</span>)[0]).inc()
+
+<span class="kw">async def</span> <span class="fn">reprocess_dlq_entry</span>(dlq_id: str, school_id: str):
+    <span class="cm">"""Re-enqueue job dari DLQ. Dipanggil dari API endpoint POST /dlq/{id}/reprocess."""</span>
+    <span class="kw">async with</span> get_db() <span class="kw">as</span> db:
+        repo = SyncJobRepo(db)
+        entry = <span class="kw">await</span> repo.get_dlq_entry(dlq_id, school_id)
+
+        <span class="kw">if not</span> entry:
+            <span class="kw">raise</span> ValueError(f<span class="str">"DLQ entry {dlq_id} not found"</span>)
+        <span class="kw">if</span> entry.is_permanent:
+            <span class="kw">raise</span> ValueError(<span class="str">"Cannot reprocess permanent failure — fix root cause first"</span>)
+
+        <span class="cm"># Buat run baru</span>
+        new_run_id = <span class="kw">await</span> repo.create_run(
+            job_id=entry.job_id,
+            school_id=entry.school_id,
+            triggered_by=<span class="str">"dlq_reprocess"</span>,
+        )
+        <span class="kw">await</span> repo.mark_dlq_reprocessed(dlq_id, new_run_id)
+
+        <span class="cm"># Publish ke MQ</span>
+        <span class="kw">from</span> mq.publisher <span class="kw">import</span> get_publisher
+        publisher = get_publisher()
+        <span class="kw">await</span> publisher.publish_sync_job(
+            job_id=entry.job_id, run_id=new_run_id,
+            school_id=entry.school_id, provider=entry.payload.get(<span class="str">"provider"</span>),
+            payload=entry.payload,
+        )
+        log.info(<span class="str">"dlq.reprocessed"</span>, dlq_id=dlq_id, new_run_id=new_run_id)
+        <span class="kw">return</span> new_run_id</div>
+</section>
+
+<!-- ═══ IDEMPOTENCY ═══ -->
+<section id="s-idempotency" style="display:none">
+<div class="page-hdr">
+  <div class="page-title">Idempotency Strategy</div>
+  <div class="page-sub">Setiap operasi aman diulang — tidak ada duplikat data meski message diproses dua kali.</div>
+</div>
+
+<div class="stitle">3 Layer Idempotency</div>
+<table class="tbl">
+  <thead><tr><th>Layer</th><th>Mekanisme</th><th>Scope</th></tr></thead>
+  <tbody>
+    <tr><td><strong>MQ Message ID</strong></td><td>message_id = run_id. Broker track untuk at-least-once guarantee.</td><td>Message layer</td></tr>
+    <tr><td><strong>Redis Dedupe Key</strong></td><td>SHA256(job_id + school_id + hour). SETNX EX 3600. Cegah double-enqueue dalam 1 jam.</td><td>Enqueue layer</td></tr>
+    <tr><td><strong>DB UPSERT</strong></td><td>ON CONFLICT DO UPDATE. External ID dari SIS sebagai natural key.</td><td>Data layer</td></tr>
+    <tr><td><strong>Run status check</strong></td><td>Cek apakah run_id sudah 'done' sebelum proses ulang. Skip jika sudah.</td><td>Worker layer</td></tr>
+  </tbody>
+</table>
+
+<div class="stitle">Redis Dedupe Key Implementation</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button"><span class="cm"># src/services/sync_service.py</span>
+<span class="kw">import</span> hashlib, redis.asyncio <span class="kw">as</span> redis
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime
+
+<span class="kw">class</span> <span class="ty">SyncService</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, redis_client: redis.Redis):
+        self._redis = redis_client
+
+    <span class="kw">async def</span> <span class="fn">_check_dedupe</span>(self, job_id: str, school_id: str) -> bool:
+        <span class="cm">"""Return True jika job ini sudah di-enqueue dalam 1 jam terakhir."""</span>
+        hour = datetime.utcnow().strftime(<span class="str">"%Y%m%d%H"</span>)
+        key = <span class="str">"dedupe:"</span> + hashlib.sha256(
+            f<span class="str">"{job_id}:{school_id}:{hour}"</span>.encode()
+        ).hexdigest()
+
+        result = <span class="kw">await</span> self._redis.set(key, <span class="str">"1"</span>, ex=3600, nx=<span class="kw">True</span>)
+        <span class="kw">return</span> result <span class="kw">is None</span>  <span class="cm"># None = key sudah ada = duplikat</span>
+
+    <span class="kw">async def</span> <span class="fn">trigger</span>(self, school_id, job_id) -> str:
+        <span class="kw">if await</span> self._check_dedupe(str(job_id), str(school_id)):
+            <span class="kw">raise</span> ValueError(<span class="str">"Job already triggered this hour — idempotent guard"</span>)
+
+        <span class="cm"># Buat run + publish ke MQ</span>
+        run_id = <span class="kw">await</span> self._create_and_publish(school_id, job_id)
+        <span class="kw">return</span> run_id</div>
+</section>
+
+<!-- ═══ WORKER FULL ═══ -->
+<section id="s-worker-full" style="display:none">
+<div class="page-hdr">
+  <div class="page-title">Worker Full Implementation</div>
+  <div class="page-sub">Consumer loop dengan error handling lengkap. Acknowledgment strategy: ack setelah DB commit, nack jika transient error.</div>
+</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm"># apps/worker/src/main.py — Consumer loop</span>
+<span class="kw">import</span> asyncio, aio_pika, json, structlog
+<span class="kw">from</span> mq.setup <span class="kw">import</span> setup_rabbitmq
+<span class="kw">from</span> jobs.sync_job <span class="kw">import</span> run_sync_job
+<span class="kw">from</span> config.settings <span class="kw">import</span> settings
+
+log = structlog.get_logger()
+
+<span class="kw">async def</span> <span class="fn">process_message</span>(message: aio_pika.IncomingMessage):
+    <span class="cm">"""Process 1 message. Ack/nack berdasarkan hasil."""</span>
+    <span class="kw">async with</span> message.process(requeue=<span class="kw">False</span>):  <span class="cm"># auto-nack jika exception</span>
+        body = json.loads(message.body)
+        job_id    = body[<span class="str">"job_id"</span>]
+        run_id    = body[<span class="str">"run_id"</span>]
+        school_id = body[<span class="str">"school_id"</span>]
+
+        log.info(<span class="str">"worker.received"</span>, job_id=job_id, run_id=run_id)
+
+        <span class="kw">try</span>:
+            <span class="kw">await</span> run_sync_job(
+                ctx={},
+                job_id=job_id,
+                school_id=school_id,
+                run_id=run_id,
+            )
+            <span class="cm"># ack otomatis di akhir `async with` block jika tidak exception</span>
+
+        <span class="kw">except</span> Exception <span class="kw">as</span> e:
+            log.error(<span class="str">"worker.unhandled_error"</span>, error=str(e), job_id=job_id)
+            <span class="cm"># aio_pika auto-nack → message masuk DLX → DLQ</span>
+            <span class="kw">raise</span>
+
+<span class="kw">async def</span> <span class="fn">main</span>():
+    connection = <span class="kw">await</span> aio_pika.connect_robust(
+        settings.RABBITMQ_URL,
+        reconnect_interval=5,
+    )
+    mq = <span class="kw">await</span> setup_rabbitmq(connection)
+
+    log.info(<span class="str">"worker.started"</span>, concurrency=settings.WORKER_CONCURRENCY)
+
+    <span class="kw">await</span> mq[<span class="str">"sync_queue"</span>].consume(
+        process_message,
+        no_ack=<span class="kw">False</span>,  <span class="cm"># manual ack — penting untuk at-least-once</span>
+    )
+
+    <span class="kw">await</span> asyncio.Future()  <span class="cm"># run forever</span>
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    asyncio.run(main())</div>
+</section>
+
+<!-- ═══ SECURITY OVERVIEW ═══ -->
+<section id="s-sec-overview" style="display:none">
+<div class="page-hdr">
+  <div class="page-tag pt-red">Modul 5 — Security</div>
+  <div class="page-title">Security Checklist (OWASP)</div>
+</div>
+<ul class="check-list">
+  <li><span class="ci ok">✓</span><div><strong>Argon2id untuk password hashing</strong><br><span style="font-size:11px;color:var(--text2)">memory=64MB, iterations=3, parallelism=4 — OWASP recommended. BUKAN bcrypt/MD5.</span></div></li>
+  <li><span class="ci ok">✓</span><div><strong>JWT RS256 dengan verifikasi lengkap (iss/aud/exp/sub)</strong><br><span style="font-size:11px;color:var(--text2)">Tidak pernah skip verifikasi. Algorithm list eksplisit — tidak boleh ["*"].</span></div></li>
+  <li><span class="ci ok">✓</span><div><strong>HttpOnly + SameSite=Strict + Secure cookie</strong><br><span style="font-size:11px;color:var(--text2)">JWT tidak pernah di localStorage. Access token cookie 15 menit, refresh 7 hari path-limited.</span></div></li>
+  <li><span class="ci ok">✓</span><div><strong>CORS whitelist eksplisit (bukan wildcard *)</strong><br><span style="font-size:11px;color:var(--text2)">Hanya domain FE resmi. Divalidasi di NGINX dan FastAPI middleware.</span></div></li>
+  <li><span class="ci ok">✓</span><div><strong>Content Security Policy (CSP) ketat</strong><br><span style="font-size:11px;color:var(--text2)">default-src 'self'; script-src 'nonce-based'; blokir eval() dan inline script.</span></div></li>
+  <li><span class="ci ok">✓</span><div><strong>Parameterized queries — zero SQL injection</strong><br><span style="font-size:11px;color:var(--text2)">SQLAlchemy ORM + explicit text() parameters. Tidak ada string concatenation SQL.</span></div></li>
+  <li><span class="ci ok">✓</span><div><strong>Rate limiting berlapis (NGINX + FastAPI slowapi)</strong><br><span style="font-size:11px;color:var(--text2)">Auth: 5/menit, API: 100/menit, Submit: 10/menit. Per IP per endpoint.</span></div></li>
+  <li><span class="ci ok">✓</span><div><strong>Structured logging dengan redaksi sensitif</strong><br><span style="font-size:11px;color:var(--text2)">Processor otomatis hapus: password, token, secret, credentials dari log.</span></div></li>
+  <li><span class="ci ok">✓</span><div><strong>PostgreSQL RLS sebagai defense-in-depth</strong><br><span style="font-size:11px;color:var(--text2)">Multi-layer isolasi tenant. RLS + app filter + JWT validation.</span></div></li>
+  <li><span class="ci ok">✓</span><div><strong>Dependency scanning di CI (Trivy + npm audit)</strong><br><span style="font-size:11px;color:var(--text2)">Block PR jika ada HIGH/CRITICAL CVE. Scan setiap push ke main.</span></div></li>
+  <li><span class="ci warn">!</span><div><strong>Rotasi secrets setiap 90 hari</strong><br><span style="font-size:11px;color:var(--text2)">DB password, JWT signing key, API keys. Via K8s Secrets + rolling restart.</span></div></li>
+  <li><span class="ci warn">!</span><div><strong>Enkripsi kolom PII (pgcrypto) — opsional awal</strong><br><span style="font-size:11px;color:var(--text2)">NIK, nomor HP, data kesehatan. Key di Vault. Direkomendasikan sebelum produksi penuh.</span></div></li>
+  <li><span class="ci info">i</span><div><strong>Audit integrity (opsional: hash chaining)</strong><br><span style="font-size:11px;color:var(--text2)">Setiap audit_event menyimpan hash dari event sebelumnya. Tamper-evident log chain.</span></div></li>
+</ul>
+</section>
+
+<!-- ═══ ARGON2 ═══ -->
+<section id="s-argon2" style="display:none">
+<div class="page-hdr"><div class="page-title">Password Hashing — Argon2id</div></div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm"># src/services/auth_service.py — password hashing</span>
+<span class="kw">from</span> argon2 <span class="kw">import</span> PasswordHasher
+<span class="kw">from</span> argon2.exceptions <span class="kw">import</span> VerifyMismatchError, VerificationError
+
+<span class="cm"># Konfigurasi OWASP recommended (2024)</span>
+ph = PasswordHasher(
+    time_cost=3,        <span class="cm"># iterasi CPU</span>
+    memory_cost=65536,  <span class="cm"># 64 MB RAM — cegah ASIC/GPU attack</span>
+    parallelism=4,      <span class="cm"># 4 threads</span>
+    hash_len=32,
+    salt_len=16,
+)
+
+<span class="kw">def</span> <span class="fn">hash_password</span>(raw: str) -> str:
+    <span class="kw">return</span> ph.hash(raw)
+
+<span class="kw">def</span> <span class="fn">verify_password</span>(hashed: str, raw: str) -> bool:
+    <span class="kw">try</span>:
+        ph.verify(hashed, raw)
+        <span class="cm"># Rehash jika parameter berubah (otomatis upgrade)</span>
+        <span class="kw">if</span> ph.check_needs_rehash(hashed):
+            <span class="kw">return</span> hash_password(raw)  <span class="cm"># caller simpan hash baru ke DB</span>
+        <span class="kw">return</span> <span class="kw">True</span>
+    <span class="kw">except</span> (VerifyMismatchError, VerificationError):
+        <span class="kw">return</span> <span class="kw">False</span>
+
+<span class="cm"># Contoh hash output:</span>
+<span class="cm"># $argon2id$v=19$m=65536,t=3,p=4$salt16bytes$hash32bytes</span>
+<span class="cm">#</span>
+<span class="cm"># Waktu hash: ~0.3-0.5 detik (intentional — lambat untuk attacker)</span>
+<span class="cm"># Cost di 100k login/hari: trival. Cost untuk attacker: very high.</span></div>
+</section>
+
+<!-- ═══ JWT OIDC ═══ -->
+<section id="s-jwt-oidc" style="display:none">
+<div class="page-hdr"><div class="page-title">JWT / OIDC Validation</div></div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button><span class="cm"># JWT validation — 6 hal yang WAJIB diverifikasi</span>
+<span class="cm">##################################################</span>
+
+<span class="cm"># 1. Algorithm restriction — TIDAK pakai "none" atau ["*"]</span>
+algorithms=[<span class="str">"RS256"</span>]  <span class="cm"># explicit. RS256 lebih aman dari HS256 untuk multi-tenant</span>
+
+<span class="cm"># 2. Signature verification — otomatis dari public key</span>
+jwt.decode(token, public_key, algorithms=[<span class="str">"RS256"</span>])
+
+<span class="cm"># 3. Issuer check (iss)</span>
+issuer = <span class="str">"https://auth.sekolah.id/realms/school"</span>  <span class="cm"># harus match EXACTLY</span>
+
+<span class="cm"># 4. Audience check (aud)</span>
+audience = <span class="str">"school-api"</span>  <span class="cm"># token harus punya aud field ini</span>
+
+<span class="cm"># 5. Expiry check (exp)</span>
+<span class="cm"># otomatis via jwt library. Access token: 15 menit.</span>
+
+<span class="cm"># 6. Required claims</span>
+options={<span class="str">"require"</span>: [<span class="str">"sub"</span>, <span class="str">"iss"</span>, <span class="str">"aud"</span>, <span class="str">"exp"</span>, <span class="str">"school_id"</span>]}
+
+<span class="cm">##################################################</span>
+<span class="cm"># Refresh token strategy</span>
+
+<span class="cm"># Access token (AT): HttpOnly cookie, 15 menit, path="/"</span>
+<span class="cm"># Refresh token (RT): HttpOnly cookie, 7 hari, path="/api/v1/auth/refresh"</span>
+<span class="cm">#</span>
+<span class="cm"># RT disimpan di Redis untuk revocation:</span>
+<span class="kw">async def</span> <span class="fn">store_refresh_token</span>(user_id: str, rt: str, ttl: int = 604800):
+    <span class="cm"># key: "rt:{sha256(rt)}" → user_id</span>
+    key = <span class="str">"rt:"</span> + hashlib.sha256(rt.encode()).hexdigest()
+    <span class="kw">await</span> redis.set(key, user_id, ex=ttl)
+
+<span class="kw">async def</span> <span class="fn">blacklist_refresh_token</span>(rt: str):
+    key = <span class="str">"rt:"</span> + hashlib.sha256(rt.encode()).hexdigest()
+    <span class="kw">await</span> redis.delete(key)  <span class="cm"># revoke immediately</span>
+
+<span class="cm"># Verifikasi AT via JWKS endpoint untuk key rotation:</span>
+<span class="cm"># GET https://auth.sekolah.id/.well-known/jwks.json</span>
+<span class="cm"># Cache JWKS 1 jam di Redis. Refresh jika kid tidak ditemukan.</span></div>
+</section>
+
+<!-- ═══ RATE LIMIT ═══ -->
+<section id="s-rate-limit" style="display:none">
+<div class="page-hdr"><div class="page-title">Rate Limiting</div></div>
+
+<div class="stitle">Konfigurasi per Endpoint</div>
+<table class="tbl">
+  <thead><tr><th>Endpoint</th><th>Limit</th><th>Burst</th><th>Key</th></tr></thead>
+  <tbody>
+    <tr><td><code>POST /auth/*</code></td><td>5/menit</td><td>10</td><td>IP</td></tr>
+    <tr><td><code>GET /api/*</code></td><td>100/menit</td><td>200</td><td>IP + school_id</td></tr>
+    <tr><td><code>POST /api/sync-jobs/*/trigger</code></td><td>10/menit</td><td>20</td><td>school_id</td></tr>
+    <tr><td><code>POST /api/integrations/*/test</code></td><td>5/menit</td><td>5</td><td>school_id</td></tr>
+    <tr><td><code>POST /api/users/invite</code></td><td>20/jam</td><td>5</td><td>school_id</td></tr>
+  </tbody>
+</table>
+
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button"><span class="cm"># src/api/v1/sync/router.py — rate limit dengan slowapi</span>
+<span class="kw">from</span> slowapi <span class="kw">import</span> Limiter
+<span class="kw">from</span> slowapi.util <span class="kw">import</span> get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+<span class="dec">@router.post</span>(<span class="str">"/{job_id}/trigger"</span>)
+<span class="dec">@limiter.limit</span>(<span class="str">"10/minute"</span>)  <span class="cm"># per IP</span>
+<span class="kw">async def</span> <span class="fn">trigger_sync</span>(request: Request, job_id: UUID, ...):
+    ...
+
+<span class="cm"># NGINX — rate limit per zone</span>
+<span class="cm">##################################</span>
+<span class="cm"># nginx.conf</span>
+limit_req_zone $binary_remote_addr zone=auth_zone:10m rate=5r/m;
+limit_req_zone $binary_remote_addr zone=api_zone:20m  rate=100r/m;
+
+location /api/v1/auth/ {
+  limit_req zone=auth_zone burst=10 nodelay;
+  limit_req_status 429;
+}
+location /api/v1/ {
+  limit_req zone=api_zone burst=200 nodelay;
+  limit_req_status 429;
+}</div>
+</section>
+
+<!-- ═══ SECRETS ═══ -->
+<section id="s-secrets" style="display:none">
+<div class="page-hdr"><div class="page-title">Secrets Management & Rotation</div></div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button"><span class="cm"># ── K8s Secret (basic) ──────────────────────────</span>
+<span class="cm"># k8s/secrets.yaml — TIDAK commit plaintext ke repo</span>
+<span class="cm"># Gunakan Sealed Secrets atau External Secrets Operator</span>
+
+<span class="kw">apiVersion</span>: v1
+<span class="kw">kind</span>: Secret
+<span class="kw">metadata</span>:
+  <span class="kw">name</span>: api-secrets
+  <span class="kw">namespace</span>: school-prod
+<span class="kw">type</span>: Opaque
+<span class="kw">stringData</span>:
+  <span class="kw">database-url</span>: <span class="str">"postgresql+asyncpg://app_user:${DB_PASS}@pgbouncer:5432/school_prod"</span>
+  <span class="kw">redis-url</span>:    <span class="str">"redis://:${REDIS_PASS}@redis:6379/0"</span>
+  <span class="kw">rabbitmq-url</span>: <span class="str">"amqps://worker:${RMQ_PASS}@rabbitmq:5671/"</span>
+
+<span class="cm"># ── External Secrets Operator (rekomendasi prod) ─</span>
+<span class="kw">apiVersion</span>: external-secrets.io/v1beta1
+<span class="kw">kind</span>: ExternalSecret
+<span class="kw">metadata</span>: {name: api-secrets}
+<span class="kw">spec</span>:
+  <span class="kw">refreshInterval</span>: 1h
+  <span class="kw">secretStoreRef</span>:
+    <span class="kw">kind</span>: ClusterSecretStore
+    <span class="kw">name</span>: vault-backend
+  <span class="kw">target</span>:
+    <span class="kw">name</span>: api-secrets
+  <span class="kw">data</span>:
+  - <span class="kw">secretKey</span>: database-url
+    <span class="kw">remoteRef</span>: {key: school/prod, property: database_url}
+  - <span class="kw">secretKey</span>: oidc-public-key
+    <span class="kw">remoteRef</span>: {key: school/prod, property: oidc_public_key}</div>
+
+<div class="stitle">Rotation Checklist (90 hari)</div>
+<ul class="check-list">
+  <li><span class="ci ok">1</span><div><strong>Generate credential baru</strong><br><span style="font-size:11px;color:var(--text2)">openssl rand -base64 32 untuk DB password, JWT secret. Catat di Vault.</span></div></li>
+  <li><span class="ci ok">2</span><div><strong>Update K8s Secret / Vault</strong><br><span style="font-size:11px;color:var(--text2)">kubectl create secret ... --dry-run=client | kubectl apply -f -</span></div></li>
+  <li><span class="ci ok">3</span><div><strong>Rolling restart pod</strong><br><span style="font-size:11px;color:var(--text2)">kubectl rollout restart deployment/api-server. Zero downtime via rolling update.</span></div></li>
+  <li><span class="ci ok">4</span><div><strong>Revoke credential lama di DB</strong><br><span style="font-size:11px;color:var(--text2)">ALTER ROLE app_user PASSWORD 'new_pass'; Setelah semua pod restart.</span></div></li>
+  <li><span class="ci ok">5</span><div><strong>Verifikasi health check</strong><br><span style="font-size:11px;color:var(--text2)">Pantau /health endpoint + error rate selama 10 menit setelah rotation.</span></div></li>
+</ul>
+</section>
+
+<!-- ═══ PII ═══ -->
+<section id="s-pii" style="display:none">
+<div class="page-hdr"><div class="page-title">PII Handling & Data Minimization</div></div>
+
+<div class="stitle">Prinsip Data Minimization</div>
+<ul class="check-list">
+  <li><span class="ci ok">✓</span><div><strong>Hanya kumpulkan data yang dibutuhkan</strong><br><span style="font-size:11px;color:var(--text2)">Tidak menyimpan foto, video, atau data biometrik kecuali eksplisit dibutuhkan.</span></div></li>
+  <li><span class="ci ok">✓</span><div><strong>Audit log bebas PII</strong><br><span style="font-size:11px;color:var(--text2)">audit_event.metadata TIDAK boleh berisi nama lengkap, NIK, atau nomor HP. Gunakan ID saja.</span></div></li>
+  <li><span class="ci ok">✓</span><div><strong>Log tidak mengandung PII</strong><br><span style="font-size:11px;color:var(--text2)">structlog processor redact key: nama, nik, email, phone, password. Replace dengan [REDACTED].</span></div></li>
+  <li><span class="ci warn">!</span><div><strong>Enkripsi pgcrypto untuk kolom sensitif</strong><br><span style="font-size:11px;color:var(--text2)">NIK, nomor HP siswa. Implementasikan sebelum go-live dengan data riil.</span></div></li>
+  <li><span class="ci info">i</span><div><strong>Kebijakan retensi data</strong><br><span style="font-size:11px;color:var(--text2)">Setelah school suspend 2 tahun: anonymize data siswa (replace dengan hash). Setelah 5 tahun: delete.</span></div></li>
+</ul>
+
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button"><span class="cm"># Enkripsi kolom PII dengan pgcrypto</span>
+<span class="cm">-- Contoh: simpan NIK terenkripsi</span>
+<span class="kw">UPDATE</span> siswa
+<span class="kw">SET</span> nik_enc = pgp_sym_encrypt(nik_plain, current_setting(<span class="str">'app.pii_key'</span>))
+<span class="kw">WHERE</span> nik_plain <span class="kw">IS NOT NULL</span>;
+
+<span class="cm">-- Baca:</span>
+<span class="kw">SELECT</span>
+  id, nama,
+  pgp_sym_decrypt(nik_enc, current_setting(<span class="str">'app.pii_key'</span>)) <span class="kw">AS</span> nik
+<span class="kw">FROM</span> siswa
+<span class="kw">WHERE</span> school_id = $1;
+
+<span class="cm"># Python — application layer encryption (alternatif)</span>
+<span class="kw">from</span> cryptography.fernet <span class="kw">import</span> Fernet
+
+<span class="kw">class</span> <span class="ty">PIIEncryptor</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, key: bytes):
+        self._f = Fernet(key)
+
+    <span class="kw">def</span> <span class="fn">encrypt</span>(self, plain: str) -> str:
+        <span class="kw">return</span> self._f.encrypt(plain.encode()).decode()
+
+    <span class="kw">def</span> <span class="fn">decrypt</span>(self, cipher: str) -> str:
+        <span class="kw">return</span> self._f.decrypt(cipher.encode()).decode()</div>
+</section>
+
+<!-- ═══ CICD FLOW ═══ -->
+<section id="s-cicd-flow" style="display:none">
+<div class="page-hdr">
+  <div class="page-tag pt-blue">Modul 6 — CI/CD</div>
+  <div class="page-title">Pipeline Flow</div>
+</div>
+
+<div class="stitle">Pipeline: PR → Staging → Production</div>
+<div class="flow" style="flex-wrap:wrap;gap:4px">
+  <div class="flow-node a">Push / PR</div><div class="flow-arr">→</div>
+  <div class="flow-node">Lint + Type</div><div class="flow-arr">→</div>
+  <div class="flow-node">Unit Tests</div><div class="flow-arr">→</div>
+  <div class="flow-node">Security Scan</div><div class="flow-arr">→</div>
+  <div class="flow-node">Build Image</div>
+</div>
+<div class="flow" style="flex-wrap:wrap;gap:4px;margin-top:4px">
+  <div class="flow-node a">Merge to main</div><div class="flow-arr">→</div>
+  <div class="flow-node">Integration Tests</div><div class="flow-arr">→</div>
+  <div class="flow-node">Push to Registry</div><div class="flow-arr">→</div>
+  <div class="flow-node w">Deploy Staging</div><div class="flow-arr">→</div>
+  <div class="flow-node">Smoke Tests</div>
+</div>
+<div class="flow" style="flex-wrap:wrap;gap:4px;margin-top:4px">
+  <div class="flow-node a">Manual Approval</div><div class="flow-arr">→</div>
+  <div class="flow-node s">Deploy Production</div><div class="flow-arr">→</div>
+  <div class="flow-node">DB Migration</div><div class="flow-arr">→</div>
+  <div class="flow-node">Rolling Restart</div><div class="flow-arr">→</div>
+  <div class="flow-node s">Monitor 15m</div>
+</div>
+</section>
+
+<!-- ═══ GITHUB ACTIONS ═══ -->
+<section id="s-github-actions" style="display:none">
+<div class="page-hdr"><div class="page-title">GitHub Actions — Complete Pipeline</div></div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button"><span class="cm"># .github/workflows/ci.yml</span>
+<span class="kw">name</span>: CI/CD Pipeline
+
+<span class="kw">on</span>:
+  <span class="kw">push</span>:
+    <span class="kw">branches</span>: [main]
+  <span class="kw">pull_request</span>:
+    <span class="kw">branches</span>: [main]
+
+<span class="kw">jobs</span>:
+  <span class="cm"># ── JOB 1: Lint + Typecheck ─────────────────────</span>
+  <span class="kw">lint</span>:
+    <span class="kw">runs-on</span>: ubuntu-latest
+    <span class="kw">steps</span>:
+    - <span class="kw">uses</span>: actions/checkout@v4
+    - <span class="kw">name</span>: Setup Python
+      <span class="kw">uses</span>: actions/setup-python@v5
+      <span class="kw">with</span>: {python-version: <span class="str">'3.12'</span>}
+    - <span class="kw">name</span>: Run ruff + mypy
+      <span class="kw">run</span>: |
+        pip install ruff mypy
+        ruff check apps/api/src apps/worker/src
+        mypy apps/api/src --ignore-missing-imports
+
+  <span class="cm"># ── JOB 2: Security Scan ────────────────────────</span>
+  <span class="kw">security</span>:
+    <span class="kw">runs-on</span>: ubuntu-latest
+    <span class="kw">steps</span>:
+    - <span class="kw">uses</span>: actions/checkout@v4
+    - <span class="kw">name</span>: Trivy vulnerability scan
+      <span class="kw">uses</span>: aquasecurity/trivy-action@master
+      <span class="kw">with</span>:
+        <span class="kw">scan-type</span>: fs
+        <span class="kw">exit-code</span>: <span class="str">'1'</span>
+        <span class="kw">severity</span>: HIGH,CRITICAL
+    - <span class="kw">name</span>: npm audit (frontend)
+      <span class="kw">run</span>: cd apps/web && npm audit --audit-level=high
+
+  <span class="cm"># ── JOB 3: Unit + Integration Tests ─────────────</span>
+  <span class="kw">test</span>:
+    <span class="kw">runs-on</span>: ubuntu-latest
+    <span class="kw">services</span>:
+      <span class="kw">postgres</span>:
+        <span class="kw">image</span>: postgres:15
+        <span class="kw">env</span>: {POSTGRES_PASSWORD: test, POSTGRES_DB: school_test}
+        <span class="kw">options</span>: --health-cmd pg_isready --health-interval 5s
+      <span class="kw">redis</span>:
+        <span class="kw">image</span>: redis:7-alpine
+    <span class="kw">steps</span>:
+    - <span class="kw">uses</span>: actions/checkout@v4
+    - <span class="kw">name</span>: Run tests
+      <span class="kw">env</span>:
+        <span class="kw">DATABASE_URL</span>: postgresql+asyncpg://postgres:test@localhost:5432/school_test
+        <span class="kw">REDIS_URL</span>: redis://localhost:6379/0
+      <span class="kw">run</span>: |
+        cd apps/api
+        pip install -e ".[test]"
+        pytest src/tests/ -v --cov=src --cov-fail-under=85 \
+          -m "unit or integration"
+    - <span class="kw">name</span>: Upload coverage
+      <span class="kw">uses</span>: codecov/codecov-action@v4
+
+  <span class="cm"># ── JOB 4: Build & Push (main only) ─────────────</span>
+  <span class="kw">build-push</span>:
+    <span class="kw">needs</span>: [lint, security, test]
+    <span class="kw">if</span>: github.ref == 'refs/heads/main'
+    <span class="kw">runs-on</span>: ubuntu-latest
+    <span class="kw">steps</span>:
+    - <span class="kw">uses</span>: actions/checkout@v4
+    - <span class="kw">name</span>: Build and push images
+      <span class="kw">run</span>: |
+        docker buildx bake --push \
+          --set api.tags=registry.io/school-api:${{ github.sha }} \
+          --set worker.tags=registry.io/school-worker:${{ github.sha }}
+
+  <span class="cm"># ── JOB 5: Deploy Staging ───────────────────────</span>
+  <span class="kw">deploy-staging</span>:
+    <span class="kw">needs</span>: build-push
+    <span class="kw">runs-on</span>: ubuntu-latest
+    <span class="kw">environment</span>: staging
+    <span class="kw">steps</span>:
+    - <span class="kw">name</span>: DB Migration
+      <span class="kw">run</span>: |
+        kubectl exec deploy/api-server -- alembic upgrade head
+    - <span class="kw">name</span>: Helm upgrade
+      <span class="kw">run</span>: |
+        helm upgrade school-saas ./helm/school-saas \
+          --namespace school-staging \
+          --set image.tag=${{ github.sha }} \
+          --wait --timeout 5m
+    - <span class="kw">name</span>: Smoke test
+      <span class="kw">run</span>: |
+        curl -f https://api.staging.sekolah.id/health || exit 1
+
+  <span class="cm"># ── JOB 6: Deploy Production (manual approval) ──</span>
+  <span class="kw">deploy-production</span>:
+    <span class="kw">needs</span>: deploy-staging
+    <span class="kw">runs-on</span>: ubuntu-latest
+    <span class="kw">environment</span>:
+      <span class="kw">name</span>: production
+      <span class="kw">url</span>: https://app.sekolah.id
+    <span class="kw">steps</span>:
+    - <span class="kw">name</span>: DB Migration (production)
+      <span class="kw">run</span>: kubectl exec -n school-prod deploy/api-server -- alembic upgrade head
+    - <span class="kw">name</span>: Helm upgrade (production)
+      <span class="kw">run</span>: |
+        helm upgrade school-saas ./helm/school-saas \
+          --namespace school-prod \
+          --set image.tag=${{ github.sha }} \
+          --atomic --timeout 10m
+    - <span class="kw">name</span>: Monitor 15 menit
+      <span class="kw">run</span>: ./scripts/monitor-deployment.sh 900</div>
+</section>
+
+<!-- ═══ DEPLOY CHECKLIST ═══ -->
+<section id="s-deploy-checklist" style="display:none">
+<div class="page-hdr"><div class="page-title">Deploy Checklist</div></div>
+<ul class="check-list">
+  <li><span class="ci ok">1</span><div><strong>Semua test hijau (unit, integration, contract)</strong></div></li>
+  <li><span class="ci ok">2</span><div><strong>Security scan clear (no HIGH/CRITICAL CVE)</strong></div></li>
+  <li><span class="ci ok">3</span><div><strong>DB migration di-review oleh senior dev</strong><br><span style="font-size:11px;color:var(--text2)">Pastikan migration backward-compatible. Blue-green safe.</span></div></li>
+  <li><span class="ci ok">4</span><div><strong>Migration dijalankan SEBELUM rolling restart pod</strong><br><span style="font-size:11px;color:var(--text2)">Old code + new schema harus compatible selama rolling.</span></div></li>
+  <li><span class="ci ok">5</span><div><strong>Environment variables / secrets sudah diupdate</strong></div></li>
+  <li><span class="ci ok">6</span><div><strong>Staging smoke test passed</strong></div></li>
+  <li><span class="ci ok">7</span><div><strong>Helm --atomic flag aktif</strong><br><span style="font-size:11px;color:var(--text2)">Auto-rollback jika deployment gagal dalam batas waktu.</span></div></li>
+  <li><span class="ci ok">8</span><div><strong>Monitor error rate + p99 latency 15 menit post-deploy</strong></div></li>
+  <li><span class="ci ok">9</span><div><strong>Rollback plan ready</strong><br><span style="font-size:11px;color:var(--text2)">kubectl rollout undo deployment/api-server. Tag image sebelumnya dicatat.</span></div></li>
+  <li><span class="ci warn">!</span><div><strong>Backup DB sebelum migration besar</strong><br><span style="font-size:11px;color:var(--text2)">pg_dump atau trigger manual basebackup sebelum ALTER TABLE besar.</span></div></li>
+</ul>
+</section>
+
+<!-- ═══ RUNBOOK ═══ -->
+<section id="s-runbook" style="display:none">
+<div class="page-hdr"><div class="page-title">Runbook Operasional</div></div>
+
+<div class="stitle">1. Restore Drill (Mingguan)</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button"><span class="cm">#!/bin/bash
+# scripts/restore-drill.sh — jalankan di environment TERPISAH</span>
+
+set -e
+TARGET_TIME=<span class="str">"2026-04-01T06:30:00Z"</span>
+RESTORE_NS=<span class="str">"school-restore-test"</span>
+
+echo <span class="str">"[1] Download base backup dari S3..."</span>
+aws s3 sync s3://school-backup-prod/base/latest/ /tmp/restore/data/
+
+echo <span class="str">"[2] Extract + setup recovery.conf..."</span>
+tar -xzf /tmp/restore/data/base.tar.gz -C /tmp/restore/pgdata/
+cat &gt; /tmp/restore/pgdata/recovery.conf &lt;&lt;EOF
+recovery_target_time = '${TARGET_TIME}'
+recovery_target_action = 'promote'
+restore_command = 'aws s3 cp s3://school-backup-prod/wal/%f %p'
+EOF
+
+echo <span class="str">"[3] Start PG dalam recovery mode di namespace uji..."</span>
+kubectl apply -f k8s/restore-test-pg.yaml -n ${RESTORE_NS}
+kubectl wait --for=condition=ready pod -l app=restore-pg -n ${RESTORE_NS} --timeout=300s
+
+echo <span class="str">"[4] Verifikasi data..."</span>
+kubectl exec -n ${RESTORE_NS} deploy/restore-pg -- psql -U postgres school_db -c \
+  "SELECT COUNT(*) AS total_siswa, MAX(created_at) AS latest FROM siswa;"
+
+echo <span class="str">"[5] Hitung RTO..."</span>
+END_TIME=$(date +%s)
+echo "RTO: $((END_TIME - START_TIME)) detik (target: &lt; 1800)"
+
+echo <span class="str">"[6] Cleanup namespace uji..."</span>
+kubectl delete namespace ${RESTORE_NS}</div>
+
+<div class="stitle">2. DLQ Reprocess</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button"><span class="cm">#!/bin/bash
+# scripts/reprocess-dlq.sh</span>
+
+SCHOOL_ID=<span class="str">"$1"</span>
+REASON_FILTER=<span class="str">"$2"</span>  <span class="cm"># opsional: timeout, circuit_open, dll</span>
+DRY_RUN=<span class="str">"$3"</span>       <span class="cm"># --dry-run untuk preview</span>
+
+echo <span class="str">"[1] Check DLQ entries..."</span>
+psql $DATABASE_URL -c <span class="str">"
+  SELECT id, job_id, error_reason, attempts, created_at
+  FROM sync_job_dlq
+  WHERE school_id = '${SCHOOL_ID}'
+    AND is_permanent = false
+    AND (error_reason = '${REASON_FILTER}' OR '${REASON_FILTER}' = '')
+  ORDER BY created_at DESC
+  LIMIT 20;
+"</span>
+
+if [ <span class="str">"$DRY_RUN"</span> != <span class="str">"--dry-run"</span> ]; then
+  echo <span class="str">"[2] Re-enqueue via API..."</span>
+  <span class="cm"># Panggil API endpoint POST /api/v1/sync-jobs/dlq/{id}/reprocess</span>
+  curl -X POST \
+    -H <span class="str">"Authorization: Bearer ${ADMIN_TOKEN}"</span> \
+    -H <span class="str">"Content-Type: application/json"</span> \
+    https://api.sekolah.id/api/v1/sync-jobs/dlq/bulk-reprocess \
+    -d "{\"school_id\": \"${SCHOOL_ID}\", \"reason\": \"${REASON_FILTER}\"}"
+
+  echo <span class="str">"[3] Monitor hasil reprocessing..."</span>
+  sleep 30
+  psql $DATABASE_URL -c <span class="str">"
+    SELECT status, COUNT(*) FROM sync_job_run
+    WHERE school_id = '${SCHOOL_ID}'
+      AND created_at &gt; now() - interval '10 minutes'
+    GROUP BY status;
+  "</span>
+fi</div>
+
+<div class="stitle">3. Tenant Isolation (Incident)</div>
+<div class="code"><button class="copy-btn" onclick="cp(this)">copy</button"><span class="cm"># Isolasi tenant bermasalah — tanpa pengaruhi tenant lain</span>
+SCHOOL_ID=<span class="str">"uuid-school-xyz"</span>
+
+<span class="cm"># 1. Set isolasi via API (admin endpoint)</span>
+curl -X POST \
+  -H <span class="str">"Authorization: Bearer ${SUPER_ADMIN_TOKEN}"</span> \
+  https://api.sekolah.id/api/v1/admin/schools/${SCHOOL_ID}/isolate \
+  -d '{"reason": "Suspicious bulk export activity"}'
+
+<span class="cm"># 2. Verifikasi tenant di-isolasi (semua request → 403)</span>
+curl -H <span class="str">"X-School-ID: ${SCHOOL_ID}"</span> https://api.sekolah.id/api/v1/dashboard/stats
+<span class="cm"># Expected: HTTP 403 {"detail": "Tenant isolated"}</span>
+
+<span class="cm"># 3. Verifikasi tenant lain tidak terdampak</span>
+curl -H <span class="str">"X-School-ID: ${OTHER_SCHOOL_ID}"</span> https://api.sekolah.id/api/v1/dashboard/stats
+<span class="cm"># Expected: HTTP 200 OK</span>
+
+<span class="cm"># 4. Setelah investigasi selesai — un-isolate</span>
+curl -X POST \
+  -H <span class="str">"Authorization: Bearer ${SUPER_ADMIN_TOKEN}"</span> \
+  https://api.sekolah.id/api/v1/admin/schools/${SCHOOL_ID}/un-isolate</div>
+</section>
+
+<!-- ═══ ROADMAP ═══ -->
+<section id="s-roadmap" style="display:none">
+<div class="page-hdr">
+  <div class="page-tag pt-purple">Roadmap</div>
+  <div class="page-title">Fase & Prioritas Implementasi</div>
+</div>
+
+<div class="stitle">Tabel Fitur per Fase</div>
+<table class="tbl">
+  <thead><tr><th>Fitur</th><th>Fase</th><th>Effort</th><th>Risiko</th><th>Impact</th></tr></thead>
+  <tbody>
+    <tr><td>Auth OIDC + cookie strategy</td><td><span class="badge b-danger">Quick Win</span></td><td>Low</td><td>Med</td><td>⭐⭐⭐⭐⭐</td></tr>
+    <tr><td>Onboarding wizard FE+BE</td><td><span class="badge b-danger">Quick Win</span></td><td>Med</td><td>Low</td><td>⭐⭐⭐⭐⭐</td></tr>
+    <tr><td>DB schema + RLS</td><td><span class="badge b-danger">Quick Win</span></td><td>Med</td><td>High</td><td>⭐⭐⭐⭐⭐</td></tr>
+    <tr><td>1 SIS adapter + sync dasar</td><td><span class="badge b-danger">Quick Win</span></td><td>High</td><td>Med</td><td>⭐⭐⭐⭐⭐</td></tr>
+    <tr><td>Audit log + OTel baseline</td><td><span class="badge b-danger">Quick Win</span></td><td>Low</td><td>Low</td><td>⭐⭐⭐⭐</td></tr>
+    <tr><td>Multi-provider adapters</td><td><span class="badge b-warn">Medium</span></td><td>High</td><td>Med</td><td>⭐⭐⭐⭐⭐</td></tr>
+    <tr><td>Field mapping UI</td><td><span class="badge b-warn">Medium</span></td><td>High</td><td>Low</td><td>⭐⭐⭐⭐</td></tr>
+    <tr><td>RabbitMQ + retry/DLQ</td><td><span class="badge b-warn">Medium</span></td><td>High</td><td>Med</td><td>⭐⭐⭐⭐⭐</td></tr>
+    <tr><td>Dashboard + reporting</td><td><span class="badge b-warn">Medium</span></td><td>Med</td><td>Low</td><td>⭐⭐⭐⭐</td></tr>
+    <tr><td>User management + roles</td><td><span class="badge b-warn">Medium</span></td><td>Med</td><td>Low</td><td>⭐⭐⭐⭐</td></tr>
+    <tr><td>SSO / SAML per sekolah</td><td><span class="badge b-blue">Long-term</span></td><td>High</td><td>High</td><td>⭐⭐⭐</td></tr>
+    <tr><td>Read replica + HPA</td><td><span class="badge b-blue">Long-term</span></td><td>Med</td><td>Med</td><td>⭐⭐⭐⭐</td></tr>
+    <tr><td>Multi-region / DR</td><td><span class="badge b-blue">Long-term</span></td><td>Very High</td><td>High</td><td>⭐⭐⭐</td></tr>
+    <tr><td>AI-assist field mapping</td><td><span class="badge b-blue">Long-term</span></td><td>High</td><td>Low</td><td>⭐⭐⭐</td></tr>
+    <tr><td>PII encryption (pgcrypto)</td><td><span class="badge b-warn">Medium</span></td><td>Med</td><td>Med</td><td>⭐⭐⭐⭐⭐</td></tr>
+  </tbody>
+</table>
+
+<div class="stitle">Problem → Mitigation Mapping</div>
+<table class="tbl">
+  <thead><tr><th>Problem</th><th>Mitigation</th><th>Timeline</th></tr></thead>
+  <tbody>
+    <tr><td>Data bocor antar tenant</td><td>RLS + JWT validation + app filter</td><td>Hari 1</td></tr>
+    <tr><td>SIS vendor down</td><td>Circuit breaker + DLQ + retry</td><td>Minggu 2-3</td></tr>
+    <tr><td>Data duplikat saat retry</td><td>ON CONFLICT + Redis dedupe</td><td>Minggu 2-3</td></tr>
+    <tr><td>Job queue overload</td><td>Prefetch limit + HPA worker</td><td>Bulan 2</td></tr>
+    <tr><td>Credential bocor di log</td><td>structlog redact processor</td><td>Hari 3</td></tr>
+    <tr><td>DB connection exhausted</td><td>PgBouncer + connection pool</td><td>Minggu 1</td></tr>
+    <tr><td>Storage audit membengkak</td><td>Partition monthly + DROP OLD</td><td>Bulan 1</td></tr>
+    <tr><td>Password lemah/breach</td><td>Argon2id + breach detection API</td><td>Hari 1</td></tr>
+  </tbody>
+</table>
+</section>
+
+<!-- ═══ 6 STEPS ═══ -->
+<section id="s-6steps" style="display:none">
+<div class="page-hdr">
+  <div class="page-title">6 Langkah Awal Implementasi</div>
+  <div class="page-sub">Practical checklist untuk tim engineering. Selesaikan urut — setiap langkah memblokir langkah berikutnya.</div>
+</div>
+
+<div class="phase-card" style="background:var(--danger-bg);border-color:#F09595">
+  <div class="phase-hdr">
+    <div class="phase-num" style="background:#F09595;color:#6B1414">1</div>
+    <div class="phase-title">Hari 1-2: Monorepo + Docker Compose Dev</div>
+  </div>
+  <div class="phase-body">
+    Init Turborepo. Setup docker-compose.yml: PostgreSQL 15, Redis 7, RabbitMQ 3.12, pgAdmin.
+    Buat .env.example. Jalankan <code>docker compose up -d</code> → semua service healthy.
+    Setup scripts/db-init.sql untuk create role, database, extensions.
+  </div>
+</div>
+
+<div class="phase-card" style="background:var(--warn-bg);border-color:#FAC775">
+  <div class="phase-hdr">
+    <div class="phase-num" style="background:#FAC775;color:#5A3500">2</div>
+    <div class="phase-title">Hari 2-4: Database Schema + RLS + Migrations</div>
+  </div>
+  <div class="phase-body">
+    Jalankan DDL core, sync, audit (DDL dari modul database). Setup Alembic.
+    Apply RLS policies. Verifikasi: connect sebagai app_user, pastikan hanya bisa akses dengan school_id benar.
+    Buat seed data untuk 2 sekolah uji. Test RLS isolation.
+  </div>
+</div>
+
+<div class="phase-card" style="background:var(--success-bg);border-color:#9FE1CB">
+  <div class="phase-hdr">
+    <div class="phase-num" style="background:#9FE1CB;color:#064530">3</div>
+    <div class="phase-title">Hari 3-6: Auth OIDC + JWT + Cookie Strategy</div>
+  </div>
+  <div class="phase-body">
+    Setup Keycloak di docker-compose. Buat realm + client. Implementasi FastAPI auth router
+    (POST /oidc/callback, /refresh, /logout). Set HttpOnly cookie. Test: login → cookie ada →
+    /me return user info → logout → cookie cleared. FE login page + redirect flow.
+  </div>
+</div>
+
+<div class="phase-card" style="background:var(--accent-bg);border-color:#B5D4F4">
+  <div class="phase-hdr">
+    <div class="phase-num" style="background:#B5D4F4;color:#0D3268">4</div>
+    <div class="phase-title">Minggu 2: Onboarding Flow FE + BE</div>
+  </div>
+  <div class="phase-body">
+    POST /api/v1/schools endpoint + onboarding wizard steps. FE: OnboardingWizard component
+    (Zustand + RHF + Zod). Test full flow: daftar sekolah → setup admin → pilih integrasi.
+    Verifikasi: school.status = active setelah selesai.
+  </div>
+</div>
+
+<div class="phase-card" style="background:var(--purple-bg);border-color:#CECBF6">
+  <div class="phase-hdr">
+    <div class="phase-num" style="background:#CECBF6;color:#26215C">5</div>
+    <div class="phase-title">Minggu 2-3: Sync Worker + RabbitMQ + Retry/DLQ</div>
+  </div>
+  <div class="phase-body">
+    Setup aio_pika consumer. Buat 1 SIS adapter (mock atau vendor nyata). Implementasi
+    run_sync_job() dengan circuit breaker + full jitter backoff. Test: trigger sync → lihat
+    di sync_job_run → data masuk DB. Test failure: mock SIS error → DLQ populated.
+  </div>
+</div>
+
+<div class="phase-card" style="background:var(--bg2)">
+  <div class="phase-hdr">
+    <div class="phase-num" style="background:var(--bg3);color:var(--text2)">6</div>
+    <div class="phase-title">Minggu 3-4: OTel + Prometheus + GitHub Actions CI/CD</div>
+  </div>
+  <div class="phase-body">
+    Setup OTel collector di docker-compose. Instrument FastAPI + worker. Grafana dashboard
+    minimal (error rate, p99, queue depth). GitHub Actions: lint → test → build → deploy staging.
+    Buat restore drill script. Jalankan drill pertama. Document RTO aktual.
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <div style="font-size:12px;font-weight:600;margin-bottom:10px">Definisi "Done" per Langkah</div>
+  <table class="tbl">
+    <thead><tr><th>Langkah</th><th>Acceptance Criteria</th></tr></thead>
+    <tbody>
+      <tr><td>1 - Dev Environment</td><td><code>docker compose up</code> → semua service healthy. <code>psql</code> bisa connect.</td></tr>
+      <tr><td>2 - Database</td><td>RLS test: query dari tenant A tidak dapat data tenant B. Alembic migration berhasil.</td></tr>
+      <tr><td>3 - Auth</td><td>Login → dapat cookie → /me return user → logout → cookie cleared. Unit test middleware.</td></tr>
+      <tr><td>4 - Onboarding</td><td>E2E: daftar sekolah baru hingga status=active. Unit test form validation.</td></tr>
+      <tr><td>5 - Sync Worker</td><td>Trigger sync → data masuk DB. Error → DLQ populated. Circuit breaker bekerja.</td></tr>
+      <tr><td>6 - Observability</td><td>Grafana dashboard tampil. Alert firing jika error rate > 2%. CI/CD pipeline hijau.</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+</div>
+</main>
+</div>
+
+<script>
+function show(id, btn) {
+  document.querySelectorAll('section').forEach(s => s.style.display = 'none');
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('on'));
+  document.getElementById('s-' + id).style.display = 'block';
+  btn.classList.add('on');
+  document.querySelector('.main').scrollTop = 0;
+}
+function cp(btn) {
+  const text = btn.closest('.code').innerText.replace('copy\n','').replace('copy','');
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 1800);
+  });
+}
+</script>
+</body>
+</html>
